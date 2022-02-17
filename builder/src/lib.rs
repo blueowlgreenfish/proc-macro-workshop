@@ -37,6 +37,18 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         }
     });
+    let build_fields = fields.iter().map(|f| {
+        let name = &f.ident;
+        quote! {
+            #name: self.#name.clone().ok_or(concat!(stringify!(#name), " is not set"))?
+        }
+    });
+    let build_empty = fields.iter().map(|f| {
+        let name = &f.ident;
+        quote! {
+            #name: None
+        }
+    });
     let expanded = quote! {
         pub struct #bident {
             #(#optionized,)*
@@ -44,22 +56,20 @@ pub fn derive(input: TokenStream) -> TokenStream {
         impl #name {
             pub fn builder() -> #bident {
                 #bident {
-                    executable: None,
-                    args: None,
-                    env: None,
-                    current_dir: None,
+                    #(#build_empty,)*
+                //    executable: None,
+                //    args: None,
+                //    env: None,
+                //    current_dir: None,
                 }
             }
         }
         impl #bident {
             #(#methods)*
 
-            pub fn build(&mut self) -> Result<#name, Box<dyn std::error::Error>> {
+            pub fn build(&self) -> Result<#name, Box<dyn std::error::Error>> {
                 Ok(#name {
-                    executable: self.executable.clone().ok_or("oh nyo executable")?,
-                    args: self.args.clone().ok_or("oh nyo args")?,
-                    env: self.env.clone().ok_or("oh nyo env")?,
-                    current_dir: self.current_dir.clone().ok_or("oh nyo current_dir")?,
+                    #(#build_fields,)*
                 })
             }
         }
