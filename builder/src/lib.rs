@@ -23,38 +23,23 @@ pub fn derive(input: TokenStream) -> TokenStream {
         unimplemented!();
     };
     let optionized = fields.iter().map(|f| {
-        //        let original_type = f.ty.clone();
-        //        let mut segments = syn::punctuated::Punctuated::new();
-        //        segments.push_value(syn::syn::PathSegment {
-        //            ident: syn::Ident::new("Option", )
-        //        });
-        //            let ty = syn::Type::Path(syn::TypePath {
-        //                qself: None,
-        //                path: syn::Path {
-        //                    leading_colon: None,
-        //                    segments,
-        //                }
-        //            });
-        //        )
         let name = &f.ident;
         let ty = &f.ty;
         quote! { #name: std::option::Option<#ty> }
-        //    attrs: Vec::new(),
-        //    vis: syn::Visibility::Inherited,
-        //    ident: f.ident.clone(),
-        //    colon_token: f.colon_token,
-        //    ty: f.ty.clone(),
+    });
+    let methods = fields.iter().map(|f| {
+        let name = &f.ident;
+        let ty = &f.ty;
+        quote! {
+            fn #name(&mut self, #name: #ty) -> &mut Self {
+                self.#name = Some(#name);
+                self
+            }
+        }
     });
     let expanded = quote! {
         pub struct #bident {
             #(#optionized,)*
-
-            //#fields
-
-            //executable: Option<String>,
-            //args: Option<Vec<String>>,
-            //env: Option<Vec<String>>,
-            //current_dir: Option<String>,
         }
         impl #name {
             pub fn builder() -> #bident {
@@ -67,22 +52,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         }
         impl #bident {
-            fn executable(&mut self, executable: String) -> &mut Self {
-                self.executable = Some(executable);
-                self
-            }
-            fn args(&mut self, args: Vec<String>) -> &mut Self {
-                self.args = Some(args);
-                self
-            }
-            fn env(&mut self, env: Vec<String>) -> &mut Self {
-                self.env = Some(env);
-                self
-            }
-            fn current_dir(&mut self, current_dir: String) -> &mut Self {
-                self.current_dir = Some(current_dir);
-                self
-            }
+            #(#methods)*
 
             pub fn build(&mut self) -> Result<#name, Box<dyn std::error::Error>> {
                 Ok(#name {
