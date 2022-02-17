@@ -7,7 +7,7 @@ use syn::{parse_macro_input, DeriveInput};
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    //println!("{:#?}", ast);
+    //    println!("{:#?}", ast);
     let name = ast.ident;
     //let bname = format!("{}Builder", name);
     //let bident = Ident::new(&bname, name.span());
@@ -25,7 +25,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let optionized = fields.iter().map(|f| {
         let name = &f.ident;
         let ty = &f.ty;
-        quote! { #name: std::option::Option<#ty> }
+        //quote! { #name: std::option::Option<#ty> }
+        quote! { #name: Option<#ty> }
     });
     let methods = fields.iter().map(|f| {
         let name = &f.ident;
