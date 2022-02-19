@@ -27,7 +27,7 @@ fn ty_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    //    println!("{:#?}", ast);
+    //println!("{:#?}", ast);
     let name = ast.ident;
     //let bname = format!("{}Builder", name);
     //let bident = Ident::new(&bname, name.span());
