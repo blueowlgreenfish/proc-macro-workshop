@@ -58,7 +58,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         let ty = &f.ty;
         if let Some(inner_ty) = ty_inner_type(ty) {
             quote! {
-                pub fn #name(&mut self, #name: #inner_ty) -> &mut Self {
+                fn #name(&mut self, #name: #inner_ty) -> &mut Self {
                     self.#name = Some(#name);
                     self
                 }
@@ -109,7 +109,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         impl #bident {
             #(#methods)*
 
-            pub fn build(&self) -> Result<#name, Box<dyn std::error::Error>> {
+            fn build(&self) -> Result<#name, Box<dyn std::error::Error>> {
                 Ok(#name {
                     #(#build_fields,)*
                 })
