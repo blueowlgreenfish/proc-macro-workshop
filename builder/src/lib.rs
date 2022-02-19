@@ -6,14 +6,15 @@ use syn::{parse_macro_input, DeriveInput};
 
 fn ty_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
     if let syn::Type::Path(p) = ty {
-        if p.path.segments.len() != 1 || p.path.segments[0].ident != "Option" {
+        //if p.path.segments.len() != 1 || p.path.segments[0].ident != "Option" {
+        if p.path.segments[0].ident != "Option" {
             return None;
         }
 
-        if let syn::PathArguments::AngleBracketed(ref inner_ty) = p.path.segments[0].arguments {
-            if inner_ty.args.len() != 1 {
-                return None;
-            }
+        if let syn::PathArguments::AngleBracketed(inner_ty) = &p.path.segments[0].arguments {
+            //if inner_ty.args.len() != 1 {
+            //    return None;
+            //}
 
             let inner_ty = inner_ty.args.pairs().next().unwrap();
             if let syn::GenericArgument::Type(t) = inner_ty.value() {
