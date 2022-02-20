@@ -1,8 +1,6 @@
 use proc_macro::TokenStream;
-//use proc_macro2::{Ident, Span};
 use proc_macro2::TokenTree;
 use quote::{format_ident, quote};
-//use syn::{parse_macro_input, DeriveInput, Ident};
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Builder, attributes(builder))]
@@ -10,9 +8,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     //println!("{:#?}", ast);
     let name = ast.ident;
-    //let bname = format!("{}Builder", name);
-    //let bident = Ident::new(&bname, name.span());
-    //let bident = Ident::new(&bname, Span::call_site());
     let bident = format_ident!("{}Builder", name);
     let fields = if let syn::Data::Struct(syn::DataStruct {
         fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
@@ -26,7 +21,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let optionized = fields.iter().map(|f| {
         let name = &f.ident;
         let ty = &f.ty;
-        //quote! { #name: std::option::Option<#ty> }
         if ty_inner_type("Option", ty).is_some() || builder_of(&f).is_some() {
             quote! { #name: #ty }
         } else {
@@ -111,10 +105,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
             fn builder() -> #bident {
                 #bident {
                     #(#build_empty,)*
-                //    executable: None,
-                //    args: None,
-                //    env: None,
-                //    current_dir: None,
                 }
             }
         }
@@ -174,10 +164,6 @@ fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> Option<&'a syn::Type> 
         }
 
         if let syn::PathArguments::AngleBracketed(inner_ty) = &p.path.segments[0].arguments {
-            //if inner_ty.args.len() != 1 {
-            //    return None;
-            //}
-
             let inner_ty = inner_ty.args.pairs().next().unwrap();
             if let syn::GenericArgument::Type(t) = inner_ty.value() {
                 return Some(t);
