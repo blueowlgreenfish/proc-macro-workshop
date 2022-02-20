@@ -3,6 +3,34 @@ use proc_macro2::TokenTree;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
+fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> Option<&'a syn::Type> {
+    if let syn::Type::Path(p) = ty {
+        //if p.path.segments.len() != 1 || p.path.segments[0].ident != "Option" {
+        if p.path.segments[0].ident != wrapper {
+            return None;
+        }
+
+        if let syn::PathArguments::AngleBracketed(inner_ty) = &p.path.segments[0].arguments {
+            let inner_ty = inner_ty.args.pairs().next().unwrap();
+            if let syn::GenericArgument::Type(t) = inner_ty.value() {
+                return Some(t);
+            }
+        }
+    }
+    None
+}
+
+fn builder_of(f: &syn::Field) -> Option<proc_macro2::Group> {
+    for attr in &f.attrs {
+        if attr.path.segments.len() == 1 && attr.path.segments[0].ident == "builder" {
+            if let TokenTree::Group(g) = attr.tokens.clone().into_iter().next().unwrap() {
+                return Some(g);
+            }
+        }
+    }
+    None
+}
+
 #[proc_macro_derive(Builder, attributes(builder))]
 pub fn derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
@@ -19,7 +47,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         unimplemented!();
     };
     let optionized = fields.iter().map(|f| {
-        let name = &f.ident;
+        let name = f.ident.as_ref().unwrap();
         let ty = &f.ty;
         if ty_inner_type("Option", ty).is_some() || builder_of(f).is_some() {
             quote! { #name: #ty }
@@ -113,17 +141,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-fn builder_of(f: &syn::Field) -> Option<proc_macro2::Group> {
-    for attr in &f.attrs {
-        if attr.path.segments.len() == 1 && attr.path.segments[0].ident == "builder" {
-            if let TokenTree::Group(g) = attr.tokens.clone().into_iter().next().unwrap() {
-                return Some(g);
-            }
-        }
-    }
-    None
-}
-
 fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     let name = f.ident.as_ref().unwrap();
     let g = builder_of(f)?;
@@ -154,21 +171,4 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
         },
         lit => panic!("expected string, found {:?}", lit),
     }
-}
-
-fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> Option<&'a syn::Type> {
-    if let syn::Type::Path(p) = ty {
-        //if p.path.segments.len() != 1 || p.path.segments[0].ident != "Option" {
-        if p.path.segments[0].ident != wrapper {
-            return None;
-        }
-
-        if let syn::PathArguments::AngleBracketed(inner_ty) = &p.path.segments[0].arguments {
-            let inner_ty = inner_ty.args.pairs().next().unwrap();
-            if let syn::GenericArgument::Type(t) = inner_ty.value() {
-                return Some(t);
-            }
-        }
-    }
-    None
 }
