@@ -21,7 +21,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let optionized = fields.iter().map(|f| {
         let name = &f.ident;
         let ty = &f.ty;
-        if ty_inner_type("Option", ty).is_some() || builder_of(&f).is_some() {
+        if ty_inner_type("Option", ty).is_some() || builder_of(f).is_some() {
             quote! { #name: #ty }
         } else {
             quote! { #name: Option<#ty> }
@@ -37,7 +37,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     self
                 }
             }
-        } else if builder_of(&f).is_some() {
+        } else if builder_of(f).is_some() {
             quote! {
                 pub fn #name(&mut self, #name: #ty) -> &mut Self {
                     self.#name = #name;
@@ -52,15 +52,15 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 }
             }
         };
-        match extend_method(&f) {
-            None => set_method.into(),
+        match extend_method(f) {
+            None => set_method,
             Some((true, extend_method)) => extend_method,
             Some((false, extend_method)) => {
                 let expr = quote! {
                     #set_method
                     #extend_method
                 };
-                expr.into()
+                expr
             },
         }
     });
