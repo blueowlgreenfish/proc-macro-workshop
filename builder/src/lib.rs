@@ -102,6 +102,12 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     self.#name = Some(#name);
                     self
                 }
+                /*
+                 * pub fn current_dir(&mut self, current_dir: String) -> &mut Self {
+                 *     self.current_dir = Some(current_dir)
+                 *     self
+                 * }
+                 */
             }
         } else if builder_of(f).is_some() {
             quote! {
