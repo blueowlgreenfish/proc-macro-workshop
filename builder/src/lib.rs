@@ -81,8 +81,16 @@ pub fn derive(input: TokenStream) -> TokenStream {
         let ty = &f.ty;
         if ty_inner_type("Option", ty).is_some() || builder_of(f).is_some() {
             quote! { #name: #ty }
+            /*
+             * args: Vec<String>
+             * env: Vec<String>
+             * current_dir: Option<String>
+             */
         } else {
             quote! { #name: Option<#ty> }
+            /*
+             * executable: Option<String>
+             */
         }
     });
     let methods = fields.iter().map(|f| {
