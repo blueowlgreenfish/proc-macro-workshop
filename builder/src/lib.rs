@@ -33,17 +33,16 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     let name = f.ident.as_ref().unwrap();
     let g = builder_of(f)?;
     let mut tokens = g.stream().into_iter();
-    match tokens.next().unwrap() {
-        TokenTree::Ident(i) => assert_eq!(i, "each"),
-        tt => panic!("expected 'each', found {}", tt),
+    if let TokenTree::Ident(i) = tokens.next().unwrap() {
+        assert_eq!(i, "each");
     }
-    match tokens.next().unwrap() {
-        TokenTree::Punct(p) => assert_eq!(p.as_char(), '='),
-        tt => panic!("expected '=', found {}", tt),
+    if let TokenTree::Punct(p) = tokens.next().unwrap() {
+        assert_eq!(p.as_char(), '=')
     }
-    let arg = match tokens.next().unwrap() {
-        TokenTree::Literal(l) => l,
-        tt => panic!("expected string, found {}", tt),
+    let arg = if let TokenTree::Literal(l) = tokens.next().unwrap() {
+        l
+    } else {
+        unimplemented!();
     };
     match syn::Lit::new(arg) {
         syn::Lit::Str(s) => {
