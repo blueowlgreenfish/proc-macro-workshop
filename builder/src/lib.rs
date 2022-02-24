@@ -34,11 +34,11 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     let g = builder_of(f)?;
     let mut tokens = g.stream().into_iter();
     match tokens.next().unwrap() {
-        TokenTree::Ident(ref i) => assert_eq!(i, "each"),
+        TokenTree::Ident(i) => assert_eq!(i, "each"),
         tt => panic!("expected 'each', found {}", tt),
     }
     match tokens.next().unwrap() {
-        TokenTree::Punct(ref p) => assert_eq!(p.as_char(), '='),
+        TokenTree::Punct(p) => assert_eq!(p.as_char(), '='),
         tt => panic!("expected '=', found {}", tt),
     }
     let arg = match tokens.next().unwrap() {
@@ -64,7 +64,7 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
 #[proc_macro_derive(Builder, attributes(builder))]
 pub fn derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    //println!("{:#?}", ast);
+    // println!("{:#?}", ast);
     let name = ast.ident;
     let bident = format_ident!("{}Builder", name);
     let fields = if let syn::Data::Struct(syn::DataStruct {
@@ -115,6 +115,16 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     self.#name = #name;
                     self
                 }
+                /*
+                 * pub fn args(&mut self, args: Vec<String>) &mut Self {
+                 *     self.args = args;
+                 *     self
+                 * }
+                 * pub fn env(&mut self, env: Vec<String>) &mut Self {
+                 *     self.env = env;
+                 *     self
+                 * }
+                 */
             }
         } else {
             quote! {
@@ -122,6 +132,12 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     self.#name = Some(#name);
                     self
                 }
+                /*
+                 * pub fn executable(&mut self, executable: String) -> &mut Self {
+                 *     self.executable = Some(executable);
+                 *     self
+                 * }
+                 */
             }
         };
         match extend_method(f) {
