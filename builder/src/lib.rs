@@ -154,7 +154,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     });
 
     let build_fields = fields.iter().map(|f| {
-        let name = &f.ident;
+        let name = f.ident.as_ref().unwrap();
         let ty = &f.ty;
         if ty_inner_type("Option", ty).is_some() || builder_of(f).is_some() {
             quote! {
@@ -167,7 +167,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     });
     let build_empty = fields.iter().map(|f| {
-        let name = &f.ident;
+        let name = f.ident.as_ref().unwrap();
         if builder_of(f).is_some() {
             quote! { #name: Vec::new() }
         } else {
