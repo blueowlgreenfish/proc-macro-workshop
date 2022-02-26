@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proc_macro2::TokenTree;
+use proc_macro2::{Span, TokenTree};
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
@@ -46,7 +46,8 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     };
     match syn::Lit::new(arg) {
         syn::Lit::Str(s) => {
-            let arg = syn::Ident::new(&s.value(), s.span());
+            // let arg = syn::Ident::new(&s.value(), s.span());
+            let arg = proc_macro2::Ident::new(&s.value(), Span::call_site());
             let inner_ty = ty_inner_type("Vec", &f.ty).unwrap();
             let method = quote! {
                 pub fn #arg(&mut self, #arg: #inner_ty) -> &mut Self {
