@@ -2,43 +2,43 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
-fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> Option<&'a syn::Type> {
+fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> std::option::Option<&'a syn::Type> {
     if let syn::Type::Path(p) = ty {
         if p.path.segments[0].ident != wrapper {
-            return None;
+            return std::option::Option::None;
         }
         if let syn::PathArguments::AngleBracketed(inner_ty) = &p.path.segments[0].arguments {
             let inner_ty = inner_ty.args.pairs().next().unwrap();
             if let syn::GenericArgument::Type(t) = inner_ty.value() {
-                return Some(t);
+                return std::option::Option::Some(t);
             }
         }
     }
-    None
+    std::option::Option::None
 }
 
-fn builder_of(f: &syn::Field) -> Option<&syn::Attribute> {
+fn builder_of(f: &syn::Field) -> std::option::Option<&syn::Attribute> {
     for attr in &f.attrs {
         if attr.path.segments.len() == 1 && attr.path.segments[0].ident == "builder" {
-            return Some(attr);
+            return std::option::Option::Some(attr);
         }
     }
-    None
+    std::option::Option::None
 }
 
-fn mk_err<T: quote::ToTokens>(t: T) -> Option<(bool, proc_macro2::TokenStream)> {
-    Some((
+fn mk_err<T: quote::ToTokens>(t: T) -> std::option::Option<(bool, proc_macro2::TokenStream)> {
+    std::option::Option::Some((
         false,
         syn::Error::new_spanned(t, "expected `builder(each = \"...\")`").to_compile_error(),
     ))
 }
 
-fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
+fn extend_method(f: &syn::Field) -> std::option::Option<(bool, proc_macro2::TokenStream)> {
     let name = f.ident.as_ref().unwrap();
     let g = builder_of(f)?;
 
     let meta = match g.parse_meta() {
-        Ok(syn::Meta::List(nvs)) => {
+        std::result::Result::Ok(syn::Meta::List(nvs)) => {
             // println!("{:#?}", nvs);
             assert_eq!(nvs.path.get_ident().unwrap(), "builder");
             if nvs.nested.len() != 1 {
@@ -60,11 +60,11 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
                 return mk_err(inner_ty.value());
             }
         },
-        Ok(ha) => {
+        std::result::Result::Ok(ha) => {
             return mk_err(ha);
         },
-        Err(e) => {
-            return Some((false, e.to_compile_error()));
+        std::result::Result::Err(e) => {
+            return std::option::Option::Some((false, e.to_compile_error()));
         },
     };
 
@@ -78,7 +78,7 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
                     self
                 }
             };
-            Some((&arg == name, method))
+            std::option::Option::Some((&arg == name, method))
         },
         lit => panic!("expected string, found {:?}", lit),
     }
@@ -110,7 +110,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
              * current_dir: Option<String>
              */
         } else {
-            quote! { #name: Option<#ty> }
+            quote! { #name: std::option::Option<#ty> }
             /*
              * executable: Option<String>
              */
@@ -119,10 +119,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let methods = fields.iter().map(|f| {
         let name = f.ident.as_ref().unwrap();
         let ty = &f.ty;
-        let set_method = if let Some(inner_ty) = ty_inner_type("Option", ty) {
+        let set_method = if let std::option::Option::Some(inner_ty) = ty_inner_type("Option", ty) {
             quote! {
                 pub fn #name(&mut self, #name: #inner_ty) -> &mut Self {
-                    self.#name = Some(#name);
+                    self.#name = std::option::Option::Some(#name);
                     self
                 }
                 /*
@@ -152,7 +152,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         } else {
             quote! {
                 pub fn #name(&mut self, #name: #ty) -> &mut Self {
-                    self.#name = Some(#name);
+                    self.#name = std::option::Option::Some(#name);
                     self
                 }
                 /*
@@ -164,9 +164,9 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         };
         match extend_method(f) {
-            None => set_method,
-            Some((true, extend_method)) => extend_method,
-            Some((false, extend_method)) => {
+            std::option::Option::None => set_method,
+            std::option::Option::Some((true, extend_method)) => extend_method,
+            std::option::Option::Some((false, extend_method)) => {
                 let expr = quote! {
                     #set_method
                     #extend_method
@@ -195,7 +195,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
             quote! { #name: Vec::new() }
         } else {
             quote! {
-                #name: None
+                #name: std::option::Option::None
             }
         }
     });
@@ -206,7 +206,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         impl #bident {
             #(#methods)*
 
-            pub fn build(&self) -> Result<#name, Box<dyn std::error::Error>> {
+            pub fn build(&self) -> std::result::Result<#name, std::boxed::Box<dyn std::error::Error>> {
                 Ok(#name {
                     #(#build_fields,)*
                 })
