@@ -1,5 +1,4 @@
 use proc_macro::TokenStream;
-// use proc_macro2::{Span, TokenTree};
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
@@ -17,17 +16,6 @@ fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> Option<&'a syn::Type> 
     }
     None
 }
-
-// fn builder_of(f: &syn::Field) -> Option<proc_macro2::Group> {
-//     for attr in &f.attrs {
-//         if attr.path.segments.len() == 1 && attr.path.segments[0].ident == "builder" {
-//             if let TokenTree::Group(g) = attr.tokens.clone().into_iter().next().unwrap() {
-//                 return Some(g);
-//             }
-//         }
-//     }
-//     None
-// }
 
 fn builder_of(f: &syn::Field) -> Option<&syn::Attribute> {
     for attr in &f.attrs {
@@ -71,17 +59,6 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
             } else {
                 return mk_err(inner_ty.value());
             }
-            // match nvs.nested.pop().unwrap().into_value() {
-            //     syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) => {
-            //         if nv.path.get_ident().unwrap() != "each" {
-            //             return mk_err(nvs);
-            //         }
-            //         nv
-            //     },
-            //     meta => {
-            //         return mk_err(meta);
-            //     },
-            // }
         },
         Ok(ha) => {
             return mk_err(ha);
@@ -106,38 +83,6 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
         lit => panic!("expected string, found {:?}", lit),
     }
 }
-
-// fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
-//     let name = f.ident.as_ref().unwrap();
-//     let g = builder_of(f)?;
-//     let mut tokens = g.stream().into_iter();
-//     if let TokenTree::Ident(i) = tokens.next().unwrap() {
-//         assert_eq!(i, "each");
-//     }
-//     if let TokenTree::Punct(p) = tokens.next().unwrap() {
-//         assert_eq!(p.as_char(), '=')
-//     }
-//     let arg = if let TokenTree::Literal(l) = tokens.next().unwrap() {
-//         l
-//     } else {
-//         unimplemented!();
-//     };
-//     match syn::Lit::new(arg) {
-//         syn::Lit::Str(s) => {
-//             // let arg = syn::Ident::new(&s.value(), s.span());
-//             let arg = proc_macro2::Ident::new(&s.value(), Span::call_site());
-//             let inner_ty = ty_inner_type("Vec", &f.ty).unwrap();
-//             let method = quote! {
-//                 pub fn #arg(&mut self, #arg: #inner_ty) -> &mut Self {
-//                     self.#name.push(#arg);
-//                     self
-//                 }
-//             };
-//             Some((&arg == name, method))
-//         },
-//         lit => panic!("expected string, found {:?}", lit),
-//     }
-// }
 
 #[proc_macro_derive(Builder, attributes(builder))]
 pub fn derive(input: TokenStream) -> TokenStream {
