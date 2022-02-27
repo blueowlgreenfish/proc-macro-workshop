@@ -50,26 +50,41 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     let g = builder_of(f)?;
 
     let meta = match g.parse_meta() {
-        Ok(syn::Meta::List(mut nvs)) => {
+        Ok(syn::Meta::List(nvs)) => {
+            // println!("{:#?}", nvs);
             assert_eq!(nvs.path.get_ident().unwrap(), "builder");
             if nvs.nested.len() != 1 {
                 return mk_err(nvs);
             }
 
-            match nvs.nested.pop().unwrap().into_value() {
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) => {
-                    if nv.path.get_ident().unwrap() != "each" {
-                        return mk_err(nvs);
-                    }
-                    nv
-                },
-                meta => {
-                    return mk_err(meta);
-                },
+            let inner_ty = nvs.nested.pairs().next().unwrap();
+            if let syn::NestedMeta::Meta(hi) = inner_ty.value() {
+                match hi {
+                    syn::Meta::NameValue(wow) => {
+                        if wow.path.get_ident().unwrap() != "each" {
+                            return mk_err(nvs);
+                        }
+                        wow.clone()
+                    },
+                    something => return mk_err(something),
+                }
+            } else {
+                return mk_err(inner_ty.value());
             }
+            // match nvs.nested.pop().unwrap().into_value() {
+            //     syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) => {
+            //         if nv.path.get_ident().unwrap() != "each" {
+            //             return mk_err(nvs);
+            //         }
+            //         nv
+            //     },
+            //     meta => {
+            //         return mk_err(meta);
+            //     },
+            // }
         },
-        Ok(meta) => {
-            return mk_err(meta);
+        Ok(ha) => {
+            return mk_err(ha);
         },
         Err(e) => {
             return Some((false, e.to_compile_error()));
