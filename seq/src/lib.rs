@@ -9,16 +9,16 @@ struct SeqMacroInput {/* ... */}
 
 impl Parse for SeqMacroInput {
     fn parse(input: ParseStream) -> Result<Self> {
-        let _var = syn::Ident::parse(input)?;
+        let _ident = syn::Ident::parse(input)?;
         let _in = <Token![in]>::parse(input)?;
         let _from = syn::LitInt::parse(input)?;
         let _dots = <Token![..]>::parse(input)?;
         let _to = syn::LitInt::parse(input)?;
         let _body = syn::Block::parse(input)?;
         // println!("{:#?}", to);
-        // eprintln!("{:?} {:?} {:?} {:?} {:?}", var, _in, from, _dots, to);
+        // eprintln!("{:?} {:?} {:?} {:?} {:?}", ident, _in, from, _dots, to);
         // eprintln!("{:?}", body);
-        // eprintln!("{:#?}", var);
+        // eprintln!("{:#?}", ident);
         Ok(SeqMacroInput {})
     }
 }
