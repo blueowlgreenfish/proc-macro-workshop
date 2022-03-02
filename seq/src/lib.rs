@@ -33,14 +33,22 @@ impl Parse for SeqMacroInput {
     }
 }
 
-impl Into<proc_macro2::TokenStream> for SeqMacroInput {
-    fn into(self) -> proc_macro2::TokenStream {
-        // (self.from.value()..self.to.value())
-        (self.from.base10_parse::<u64>().unwrap()..self.to.base10_parse::<u64>().unwrap())
-            .map(|i| self.expand(self.tt.clone(), i))
+impl From<SeqMacroInput> for proc_macro2::TokenStream {
+    fn from(seq_macro: SeqMacroInput) -> Self {
+        (seq_macro.from.base10_parse::<u64>().unwrap()..seq_macro.to.base10_parse::<u64>().unwrap())
+            .map(|i| seq_macro.expand(seq_macro.tt.clone(), i))
             .collect()
     }
 }
+
+// impl Into<proc_macro2::TokenStream> for SeqMacroInput {
+//     fn into(self) -> proc_macro2::TokenStream {
+//         // (self.from.value()..self.to.value())
+//         (self.from.base10_parse::<u64>().unwrap()..self.to.base10_parse::<u64>().unwrap())
+//             .map(|i| self.expand(self.tt.clone(), i))
+//             .collect()
+//     }
+// }
 
 impl SeqMacroInput {
     fn expand(&self, stream: proc_macro2::TokenStream, i: u64) -> proc_macro2::TokenStream {
