@@ -6,9 +6,9 @@ use syn::{
 
 #[derive(Debug)]
 struct SeqMacroInput {
+    ident: syn::Ident,
     from: syn::LitInt,
     to: syn::LitInt,
-    ident: syn::Ident,
     tt: proc_macro2::TokenStream,
 }
 
@@ -25,10 +25,10 @@ impl Parse for SeqMacroInput {
         // println!("{:#?}", tt);
 
         Ok(SeqMacroInput {
+            ident,
             from,
             to,
             tt,
-            ident,
         })
     }
 }
