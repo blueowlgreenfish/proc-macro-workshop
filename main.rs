@@ -1,31 +1,23 @@
-// The macro invocation in the previous test case contained an empty loop body
-// inside the braces. In reality we want for the macro to accept arbitrary
-// tokens inside the braces.
+// Now construct the generated code! Produce the output TokenStream by repeating
+// the loop body the correct number of times as specified by the loop bounds and
+// replacing the specified identifier with the loop counter.
 //
-// The caller should be free to write whatever they want inside the braces. The
-// seq macro won't care whether they write a statement, or a function, or a
-// struct, or whatever else. So we will work with the loop body as a TokenStream
-// rather than as a syntax tree.
+// The invocation below will need to expand to a TokenStream containing:
 //
-// Before moving on, ensure that your implementation knows what has been written
-// inside the curly braces as a value of type TokenStream.
+//     compile_error!(concat!("error number ", stringify!(0)));
+//     compile_error!(concat!("error number ", stringify!(1)));
+//     compile_error!(concat!("error number ", stringify!(2)));
+//     compile_error!(concat!("error number ", stringify!(3)));
 //
-//
-// Resources:
-//
-//   - Explanation of the purpose of proc-macro2:
-//     https://docs.rs/proc-macro2/1.0/proc_macro2/
+// This test is written as a compile_fail test because our macro isn't yet
+// powerful enough to do anything useful. For example if we made it generate
+// something like a function, every one of those functions would have the same
+// name and the program would not compile.
 
 use seq::seq;
 
-macro_rules! expand_to_nothing {
-    ($arg:literal) => {
-        // nothing
-    };
-}
-
 seq!(N in 0..4 {
-    expand_to_nothing!(N);
+    compile_error!(concat!("error number ", stringify!(N)));
 });
 
 fn main() {}
