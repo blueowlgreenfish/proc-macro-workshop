@@ -9,7 +9,7 @@ struct SeqMacroInput {/* ... */}
 
 impl Parse for SeqMacroInput {
     fn parse(input: ParseStream) -> Result<Self> {
-        let var = syn::Ident::parse(input)?;
+        let ident = syn::Ident::parse(input)?;
         let _in = <Token![in]>::parse(input)?;
         let from = syn::LitInt::parse(input)?;
         let _dots = <Token![..]>::parse(input)?;
@@ -18,7 +18,7 @@ impl Parse for SeqMacroInput {
         let braces = syn::braced!(content in input);
         println!(
             "{:#?} {:#?} {:#?} {:#?} {:#?} {:#?}",
-            var, _in, from, _dots, to, braces
+            ident, _in, from, _dots, to, braces
         );
         let tt = proc_macro2::TokenStream::parse(&content)?;
         println!("{:#?}", tt);
