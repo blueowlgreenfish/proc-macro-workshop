@@ -12,15 +12,14 @@ impl Parse for SeqMacroInput {
         let var = syn::Ident::parse(input)?;
         let _in = <Token![in]>::parse(input)?;
         let from = syn::LitInt::parse(input)?;
-        let dots = <Token![..]>::parse(input)?;
-        let _to = syn::LitInt::parse(input)?;
-        // let _body = syn::Block::parse(input)?;
+        let _dots = <Token![..]>::parse(input)?;
+        let to = syn::LitInt::parse(input)?;
         let content;
         let braces = syn::braced!(content in input);
-        // eprintln!("{:#?} {:#?} {:#?} {:#?} {:#?}", var, in, from, dots, braces);
-        println!("{:#?}", _in);
-        println!("{:#?} {:#?} {:#?} {:#?}", var, from, dots, braces);
-        println!("{:#?}", content);
+        println!(
+            "{:#?} {:#?} {:#?} {:#?} {:#?} {:#?}",
+            var, _in, from, _dots, to, braces
+        );
         let tt = proc_macro2::TokenStream::parse(&content)?;
         println!("{:#?}", tt);
 
@@ -30,7 +29,7 @@ impl Parse for SeqMacroInput {
 
 #[proc_macro]
 pub fn seq(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as SeqMacroInput);
-    println!("{:#?}", input);
+    let _input = parse_macro_input!(input as SeqMacroInput);
+    // println!("{:#?}", input);
     TokenStream::new()
 }
