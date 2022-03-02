@@ -5,7 +5,12 @@ use syn::{
 };
 
 #[derive(Debug)]
-struct SeqMacroInput {/* ... */}
+struct SeqMacroInput {
+    from: syn::LitInt,
+    to: syn::LitInt,
+    ident: syn::Ident,
+    tt: proc_macro2::TokenStream,
+}
 
 impl Parse for SeqMacroInput {
     fn parse(input: ParseStream) -> Result<Self> {
