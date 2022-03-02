@@ -14,27 +14,62 @@ struct SeqMacroInput {
 
 impl Parse for SeqMacroInput {
     fn parse(input: ParseStream) -> Result<Self> {
-        let var = syn::Ident::parse(input)?;
+        let ident = syn::Ident::parse(input)?;
         let _in = <Token![in]>::parse(input)?;
         let from = syn::LitInt::parse(input)?;
         let _dots = <Token![..]>::parse(input)?;
         let to = syn::LitInt::parse(input)?;
         let content;
-        let braces = syn::braced!(content in input);
-        println!(
-            "{:#?} {:#?} {:#?} {:#?} {:#?} {:#?}",
-            var, _in, from, _dots, to, braces
-        );
+        let _braces = syn::braced!(content in input);
         let tt = proc_macro2::TokenStream::parse(&content)?;
-        println!("{:#?}", tt);
+        // println!("{:#?}", tt);
 
-        Ok(SeqMacroInput {})
+        Ok(SeqMacroInput {
+            from,
+            to,
+            tt,
+            ident,
+        })
+    }
+}
+
+impl Into<proc_macro2::TokenStream> for SeqMacroInput {
+    fn into(self) -> proc_macro2::TokenStream {
+        // (self.from.value()..self.to.value())
+        (self.from.base10_parse::<u64>().unwrap()..self.to.base10_parse::<u64>().unwrap())
+            .map(|i| self.expand(self.tt.clone(), i))
+            .collect()
+    }
+}
+
+impl SeqMacroInput {
+    fn expand(&self, stream: proc_macro2::TokenStream, i: u64) -> proc_macro2::TokenStream {
+        stream.into_iter().map(|tt| self.expand2(tt, i)).collect()
+    }
+
+    fn expand2(&self, tt: proc_macro2::TokenTree, i: u64) -> proc_macro2::TokenTree {
+        match tt {
+            proc_macro2::TokenTree::Group(g) => {
+                let mut expanded =
+                    proc_macro2::Group::new(g.delimiter(), self.expand(g.stream(), i));
+                expanded.set_span(g.span());
+                proc_macro2::TokenTree::Group(expanded)
+            },
+            proc_macro2::TokenTree::Ident(ref ident) if ident == &self.ident => {
+                let mut lit = proc_macro2::Literal::u64_unsuffixed(i);
+                lit.set_span(ident.span());
+                proc_macro2::TokenTree::Literal(lit)
+            },
+            tt => tt,
+        }
     }
 }
 
 #[proc_macro]
 pub fn seq(input: TokenStream) -> TokenStream {
-    let _input = parse_macro_input!(input as SeqMacroInput);
+    let input = parse_macro_input!(input as SeqMacroInput);
     // println!("{:#?}", input);
-    TokenStream::new()
+    let output: proc_macro2::TokenStream = input.into();
+    output.into()
+    // TokenStream::new()
 }
