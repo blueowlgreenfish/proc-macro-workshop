@@ -22,7 +22,7 @@ impl Parse for SeqMacroInput {
         let content;
         let _braces = syn::braced!(content in input);
         let tt = proc_macro2::TokenStream::parse(&content)?;
-        // println!("{:#?}", tt);
+        println!("{:#?}", tt);
 
         Ok(SeqMacroInput {
             ident,
