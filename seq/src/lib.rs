@@ -90,7 +90,16 @@ impl SeqMacroInput {
                                     &format!("{}{}", ident, i),
                                     ident.span(),
                                 );
-                                *rest = peek;
+                                *rest = peek.clone();
+
+                                match peek.next() {
+                                    Some(proc_macro2::TokenTree::Punct(ref punct))
+                                        if punct.as_char() == '~' =>
+                                    {
+                                        *rest = peek.clone();
+                                    },
+                                    _ => {},
+                                }
                             },
                             _ => {},
                         }
