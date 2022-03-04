@@ -22,7 +22,7 @@ impl Parse for SeqMacroInput {
         let content;
         let _braces = syn::braced!(content in input);
         let tt = proc_macro2::TokenStream::parse(&content)?;
-        println!("{:#?}", tt);
+        // println!("{:#?}", tt);
 
         Ok(SeqMacroInput {
             ident,
@@ -52,10 +52,20 @@ impl From<SeqMacroInput> for proc_macro2::TokenStream {
 
 impl SeqMacroInput {
     fn expand(&self, stream: proc_macro2::TokenStream, i: u64) -> proc_macro2::TokenStream {
-        stream.into_iter().map(|tt| self.expand2(tt, i)).collect()
+        let mut out = proc_macro2::TokenStream::new();
+        let mut tts = stream.into_iter();
+        while let Some(tt) = tts.next() {
+            out.extend(std::iter::once(self.expand2(tt, &mut tts, i)));
+        }
+        out
     }
 
-    fn expand2(&self, tt: proc_macro2::TokenTree, i: u64) -> proc_macro2::TokenTree {
+    fn expand2(
+        &self,
+        tt: proc_macro2::TokenTree,
+        rest: &mut proc_macro2::token_stream::IntoIter,
+        i: u64,
+    ) -> proc_macro2::TokenTree {
         match tt {
             proc_macro2::TokenTree::Group(g) => {
                 let mut expanded =
@@ -68,6 +78,27 @@ impl SeqMacroInput {
                 lit.set_span(ident.span());
                 proc_macro2::TokenTree::Literal(lit)
             },
+            proc_macro2::TokenTree::Ident(mut ident) => {
+                let mut peek = rest.clone();
+                match peek.next() {
+                    Some(proc_macro2::TokenTree::Punct(ref punct)) if punct.as_char() == '~' => {
+                        match peek.next() {
+                            Some(proc_macro2::TokenTree::Ident(ref ident2))
+                                if ident2 == &self.ident =>
+                            {
+                                ident = proc_macro2::Ident::new(
+                                    &format!("{}{}", ident, i),
+                                    ident.span(),
+                                );
+                                *rest = peek;
+                            },
+                            _ => {},
+                        }
+                    },
+                    _ => {},
+                }
+                proc_macro2::TokenTree::Ident(ident)
+            },
             tt => tt,
         }
     }
@@ -76,8 +107,6 @@ impl SeqMacroInput {
 #[proc_macro]
 pub fn seq(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as SeqMacroInput);
-    // println!("{:#?}", input);
     let output: proc_macro2::TokenStream = input.into();
     output.into()
-    // TokenStream::new()
 }
