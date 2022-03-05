@@ -39,21 +39,6 @@ impl From<SeqMacroInput> for proc_macro2::TokenStream {
     }
 }
 
-// impl Into<proc_macro2::TokenStream> for SeqMacroInput {
-//     fn into(self) -> proc_macro2::TokenStream {
-//         self.expand(self.tt.clone())
-//     }
-// }
-
-// impl Into<proc_macro2::TokenStream> for SeqMacroInput {
-//     fn into(self) -> proc_macro2::TokenStream {
-//         // (self.from.value()..self.to.value())
-//         (self.from.base10_parse::<u64>().unwrap()..self.to.base10_parse::<u64>().unwrap())
-//             .map(|i| self.expand(self.tt.clone(), i))
-//             .collect()
-//     }
-// }
-
 #[derive(Clone, Copy, Debug)]
 enum Mode {
     ReplaceIdent(u64),
