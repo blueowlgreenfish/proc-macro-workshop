@@ -69,7 +69,10 @@ impl SeqMacroInput {
             return out;
         }
 
-        return proc_macro2::TokenStream::new();
+        (self.from.base10_parse::<u64>().unwrap()..self.to.base10_parse::<u64>().unwrap())
+            .map(|i| self.expand_pass(stream.clone(), Mode::ReplaceIdent(i)))
+            .map(|(ts, _)| ts)
+            .collect()
     }
 
     fn expand2(
