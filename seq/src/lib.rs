@@ -10,6 +10,7 @@ struct SeqMacroInput {
     from: syn::LitInt,
     to: syn::LitInt,
     tt: proc_macro2::TokenStream,
+    inclusive: bool,
 }
 
 impl Parse for SeqMacroInput {
@@ -17,7 +18,13 @@ impl Parse for SeqMacroInput {
         let ident = syn::Ident::parse(input)?;
         let _in = <Token![in]>::parse(input)?;
         let from = syn::LitInt::parse(input)?;
-        let _dots = <Token![..]>::parse(input)?;
+        // let _dots = <Token![..]>::parse(input)?;
+        let inclusive = input.peek(Token![..=]);
+        if inclusive {
+            <Token![..=]>::parse(input)?;
+        } else {
+            <Token![..]>::parse(input)?;
+        }
         let to = syn::LitInt::parse(input)?;
         let content;
         let _braces = syn::braced!(content in input);
@@ -27,6 +34,7 @@ impl Parse for SeqMacroInput {
         Ok(SeqMacroInput {
             ident,
             from,
+            inclusive,
             to,
             tt,
         })
@@ -46,13 +54,21 @@ enum Mode {
 }
 
 impl SeqMacroInput {
+    fn range(&self) -> impl Iterator<Item = u64> {
+        if self.inclusive {
+            self.from.base10_parse::<u64>().unwrap()..(self.to.base10_parse::<u64>().unwrap() + 1)
+        } else {
+            self.from.base10_parse::<u64>().unwrap()..self.to.base10_parse::<u64>().unwrap()
+        }
+    }
+
     fn expand(&self, stream: proc_macro2::TokenStream) -> proc_macro2::TokenStream {
         let (out, mutated) = self.expand_pass(stream.clone(), Mode::ReplaceSequence);
         if mutated {
             return out;
         }
 
-        (self.from.base10_parse::<u64>().unwrap()..self.to.base10_parse::<u64>().unwrap())
+        self.range()
             .map(|i| self.expand_pass(stream.clone(), Mode::ReplaceIdent(i)))
             .map(|(ts, _)| ts)
             .collect()
@@ -120,8 +136,8 @@ impl SeqMacroInput {
                         {
                             *mutated = true;
                             *rest = peek;
-                            return (self.from.base10_parse::<u64>().unwrap()
-                                ..self.to.base10_parse::<u64>().unwrap())
+                            return self
+                                .range()
                                 .map(|i| self.expand_pass(rep.stream(), Mode::ReplaceIdent(i)))
                                 .map(|(ts, _)| ts)
                                 .collect();
