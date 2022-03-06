@@ -1,43 +1,24 @@
-// The #[sorted] macro is only defined to work on enum types, so this is a test
-// to ensure that when it's attached to a struct (or anything else) it produces
-// some reasonable error. Your macro will need to look into the syn::Item that
-// it parsed to ensure that it represents an enum, returning an error for any
-// other type of Item such as a struct.
+// At this point we have an enum and we need to check whether the variants
+// appear in sorted order!
 //
-// This is an exercise in exploring how to return errors from procedural macros.
-// The goal is to produce an understandable error message which is tailored to
-// this specific macro (saying that #[sorted] cannot be applied to things other
-// than enum). For this you'll want to look at the syn::Error type, how to
-// construct it, and how to return it.
+// When your implementation notices a variant that compares lexicographically
+// less than one of the earlier variants, you'll want to construct a syn::Error
+// that gets converted to TokenStream by the already existing code that handled
+// this conversion during the previous test case.
 //
-// Notice that the return value of an attribute macro is simply a TokenStream,
-// not a Result with an error. The syn::Error type provides a method to render
-// your error as a TokenStream containing an invocation of the compile_error
-// macro.
-//
-// A final tweak you may want to make is to have the `sorted` function delegate
-// to a private helper function which works with Result, so most of the macro
-// can be written with Result-returning functions while the top-level function
-// handles the conversion down to TokenStream.
-//
-//
-// Resources
-//
-//   - The syn::Error type:
-//     https://docs.rs/syn/1.0/syn/struct.Error.html
+// The "span" of your error, which determines where the compiler places the
+// resulting error message, will be the span of whichever variant name that is
+// not in the right place. Ideally the error message should also identify which
+// other variant the user needs to move this one to be in front of.
 
 use sorted::sorted;
 
 #[sorted]
-pub struct Error {
-    kind: ErrorKind,
-    message: String,
-}
-
-enum ErrorKind {
-    Io,
-    Syntax,
-    Eof,
+pub enum Error {
+    ThatFailed,
+    ThisFailed,
+    SomethingFailed,
+    WhoKnowsWhatFailed,
 }
 
 fn main() {}
