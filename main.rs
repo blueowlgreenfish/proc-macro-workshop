@@ -1,42 +1,43 @@
-// This test checks that an attribute macro #[sorted] exists and is imported
-// correctly in the module system. If you make the macro return an empty token
-// stream or exactly the original token stream, this test will already pass!
+// The #[sorted] macro is only defined to work on enum types, so this is a test
+// to ensure that when it's attached to a struct (or anything else) it produces
+// some reasonable error. Your macro will need to look into the syn::Item that
+// it parsed to ensure that it represents an enum, returning an error for any
+// other type of Item such as a struct.
 //
-// Be aware that the meaning of the return value of an attribute macro is
-// slightly different from that of a derive macro. Derive macros are only
-// allowed to *add* code to the caller's crate. Thus, what they return is
-// compiled *in addition to* the struct/enum that is the macro input. On the
-// other hand attribute macros are allowed to add code to the caller's crate but
-// also modify or remove whatever input the attribute is on. The TokenStream
-// returned by the attribute macro completely replaces the input item.
+// This is an exercise in exploring how to return errors from procedural macros.
+// The goal is to produce an understandable error message which is tailored to
+// this specific macro (saying that #[sorted] cannot be applied to things other
+// than enum). For this you'll want to look at the syn::Error type, how to
+// construct it, and how to return it.
 //
-// Before moving on to the next test, I recommend also parsing the input token
-// stream as a syn::Item. In order for Item to be available you will need to
-// enable `features = ["full"]` of your dependency on Syn, since by default Syn
-// only builds the minimum set of parsers needed for derive macros.
+// Notice that the return value of an attribute macro is simply a TokenStream,
+// not a Result with an error. The syn::Error type provides a method to render
+// your error as a TokenStream containing an invocation of the compile_error
+// macro.
 //
-// After parsing, the macro can return back exactly the original token stream so
-// that the input enum remains in the callers code and continues to be usable by
-// code in the rest of the crate.
+// A final tweak you may want to make is to have the `sorted` function delegate
+// to a private helper function which works with Result, so most of the macro
+// can be written with Result-returning functions while the top-level function
+// handles the conversion down to TokenStream.
 //
 //
-// Resources:
+// Resources
 //
-//   - The Syn crate for parsing procedural macro input:
-//     https://github.com/dtolnay/syn
-//
-//   - The syn::Item type which represents a parsed enum as a syntax tree:
-//     https://docs.rs/syn/1.0/syn/enum.Item.html
+//   - The syn::Error type:
+//     https://docs.rs/syn/1.0/syn/struct.Error.html
 
 use sorted::sorted;
 
 #[sorted]
-pub enum Conference {
-    RustBeltRust,
-    RustConf,
-    RustFest,
-    RustLatam,
-    RustRush,
+pub struct Error {
+    kind: ErrorKind,
+    message: String,
+}
+
+enum ErrorKind {
+    Io,
+    Syntax,
+    Eof,
 }
 
 fn main() {}
