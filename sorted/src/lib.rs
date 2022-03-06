@@ -1,30 +1,20 @@
 use proc_macro::TokenStream;
-use quote::quote;
 use syn::{parse_macro_input, spanned::Spanned};
 
 #[proc_macro_attribute]
 pub fn sorted(args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut out = input.clone();
+
     let ty = parse_macro_input!(input as syn::Item);
-    // println!("{:#?}", ty);
     assert!(args.is_empty());
 
-    // sorted_impl(ty).into()
-    sorted_impl(ty)
-        .unwrap_or_else(|e| e.to_compile_error())
-        .into()
+    if let Err(e) = sorted_impl(ty) {
+        out.extend(TokenStream::from(e.to_compile_error()));
+    }
+    out
 }
 
-// fn sorted_impl(input: syn::Item) -> proc_macro2::TokenStream {
-//     if let syn::Item::Enum(e) = input {
-//         quote! { #e }
-//     } else {
-//         quote! {
-//             compile_error!("expected enum or match expression");
-//         }
-//     }
-// }
-
-fn sorted_impl(input: syn::Item) -> Result<proc_macro2::TokenStream, syn::Error> {
+fn sorted_impl(input: syn::Item) -> Result<(), syn::Error> {
     if let syn::Item::Enum(e) = input {
         let mut names = Vec::new();
         for variant in e.variants.iter() {
@@ -39,7 +29,7 @@ fn sorted_impl(input: syn::Item) -> Result<proc_macro2::TokenStream, syn::Error>
             }
             names.push(name);
         }
-        Ok(quote! {#e})
+        Ok(())
     } else {
         Err(syn::Error::new(
             proc_macro2::Span::call_site(),
