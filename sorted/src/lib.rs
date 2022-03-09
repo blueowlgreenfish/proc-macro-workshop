@@ -44,6 +44,22 @@ struct LexiographicMatching {
     errors: Vec<syn::Error>,
 }
 
+fn path_as_string(path: &syn::Path) -> String {
+    format!("{}", quote! { #path })
+}
+
+fn get_arm_name(arm: &syn::Pat) -> Option<String> {
+    match *arm {
+        syn::Pat::Ident(syn::PatIdent {
+            subpat: Some((_, ref sp)),
+            ..
+        }) => get_arm_name(sp),
+        syn::Pat::Struct(ref s) => Some(path_as_string(&s.path)),
+        syn::Pat::TupleStruct(ref s) => Some(path_as_string(&s.path)),
+        _ => None,
+    }
+}
+
 impl syn::visit_mut::VisitMut for LexiographicMatching {
     fn visit_expr_match_mut(&mut self, m: &mut syn::ExprMatch) {
         if m.attrs.iter().any(|a| a.path.is_ident("sorted")) {
@@ -63,22 +79,6 @@ impl syn::visit_mut::VisitMut for LexiographicMatching {
         }
 
         syn::visit_mut::visit_expr_match_mut(self, m)
-    }
-}
-
-fn path_as_string(path: &syn::Path) -> String {
-    format!("{}", quote! {#path})
-}
-
-fn get_arm_name(arm: &syn::Pat) -> Option<String> {
-    match *arm {
-        syn::Pat::Ident(syn::PatIdent {
-            subpat: Some((_, ref sp)),
-            ..
-        }) => get_arm_name(sp),
-        syn::Pat::Struct(ref s) => Some(path_as_string(&s.path)),
-        syn::Pat::TupleStruct(ref s) => Some(path_as_string(&s.path)),
-        _ => None,
     }
 }
 
