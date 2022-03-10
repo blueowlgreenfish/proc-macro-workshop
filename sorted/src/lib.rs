@@ -78,6 +78,7 @@ impl syn::visit_mut::VisitMut for LexiographicMatching {
             }
         }
 
+        // to keep recursing, add the following code
         // syn::visit_mut::visit_expr_match_mut(self, m)
     }
 }
