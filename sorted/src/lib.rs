@@ -45,7 +45,12 @@ struct LexiographicMatching {
 }
 
 fn path_as_string(path: &syn::Path) -> String {
-    format!("{}", quote! { #path })
+    path.segments
+        .iter()
+        .map(|s| format!("{}", quote! { #s }))
+        .collect::<Vec<_>>()
+        .join("::")
+    // format!("{}", quote! { #path })
 }
 
 fn get_arm_name(arm: &syn::Pat) -> Option<String> {
