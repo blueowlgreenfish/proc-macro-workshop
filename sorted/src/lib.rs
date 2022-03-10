@@ -106,6 +106,6 @@ pub fn check(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut lm = LexiographicMatching::default();
     lm.visit_item_fn_mut(&mut f);
     let mut ts = quote! { #f };
-    ts.extend(lm.errors.into_iter().map(|e| e.to_compile_error()));
+    ts.extend(lm.errors.into_iter().take(1).map(|e| e.to_compile_error()));
     ts.into()
 }
