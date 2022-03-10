@@ -1,37 +1,18 @@
-// When we checked enum definitions for sortedness, it was sufficient to compare
-// a single identifier (the name of the variant) for each variant. Match
-// expressions are different in that each arm may have a pattern that consists
-// of more than just one identifier.
+// The macro won't need to define what it means for other sorts of patterns to
+// be sorted. It should be fine to trigger an error if any of the patterns is
+// not something that can be compared by path.
 //
-// Ensure that patterns consisting of a path are correctly tested for
-// sortedness. These patterns will be of type Pat::Path, Pat::TupleStruct, or
-// Pat::Struct.
-//
-//
-// Resources:
-//
-//   - The syn::Pat syntax tree which forms the left hand side of a match arm:
-//     https://docs.rs/syn/1.0/syn/enum.Pat.html
+// Be sure that the resulting error message is understandable and placed
+// correctly underlining the unsupported pattern.
 
-use sorted::sorted;
-
-use std::fmt::{self, Display};
-use std::io;
-
-#[sorted]
-pub enum Error {
-    Fmt(fmt::Error),
-    Io(io::Error),
-}
-
-impl Display for Error {
-    #[sorted::check]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        #[sorted]
-        match self {
-            Error::Io(e) => write!(f, "{}", e),
-            Error::Fmt(e) => write!(f, "{}", e),
-        }
+#[sorted::check]
+fn f(bytes: &[u8]) -> Option<u8> {
+    #[sorted]
+    match bytes {
+        [] => Some(0),
+        [a] => Some(*a),
+        [a, b] => Some(a + b),
+        _other => None,
     }
 }
 
