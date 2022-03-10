@@ -72,7 +72,15 @@ impl syn::visit_mut::VisitMut for LexiographicMatching {
             m.attrs.retain(|a| !a.path.is_ident("sorted"));
             let mut names = Vec::new();
             for arm in m.arms.iter() {
-                let path = get_arm_path(&arm.pat).unwrap();
+                let path = if let Some(path) = get_arm_path(&arm.pat) {
+                    path
+                } else {
+                    self.errors.push(syn::Error::new_spanned(
+                        &arm.pat,
+                        "unsupported by #[sorted]",
+                    ));
+                    continue;
+                };
                 let name = path_as_string(path);
                 if names.last().map(|last| &name < last).unwrap_or(false) {
                     let next_lex_i = names.binary_search(&name).unwrap_err();
