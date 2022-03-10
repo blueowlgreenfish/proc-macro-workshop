@@ -78,7 +78,7 @@ impl syn::visit_mut::VisitMut for LexiographicMatching {
             }
         }
 
-        syn::visit_mut::visit_expr_match_mut(self, m)
+        // syn::visit_mut::visit_expr_match_mut(self, m)
     }
 }
 
