@@ -53,15 +53,13 @@ fn path_as_string(path: &syn::Path) -> String {
     // format!("{}", quote! { #path })
 }
 
-fn get_arm_path(arm: &syn::Pat) -> Option<&syn::Path> {
+// fn get_arm_path(arm: &syn::Pat) -> Option<&syn::Path> {
+fn get_arm_path(arm: &syn::Pat) -> Option<syn::Path> {
     match *arm {
-        syn::Pat::Ident(syn::PatIdent {
-            subpat: Some((_, ref sp)),
-            ..
-        }) => get_arm_path(sp),
-        syn::Pat::Path(ref p) => Some(&p.path),
-        syn::Pat::Struct(ref s) => Some(&s.path),
-        syn::Pat::TupleStruct(ref s) => Some(&s.path),
+        syn::Pat::Ident(syn::PatIdent { ident: ref id, .. }) => Some(id.clone().into()),
+        syn::Pat::Path(ref p) => Some(p.path.clone()),
+        syn::Pat::Struct(ref s) => Some(s.path.clone()),
+        syn::Pat::TupleStruct(ref s) => Some(s.path.clone()),
         _ => None,
     }
 }
@@ -71,9 +69,21 @@ impl syn::visit_mut::VisitMut for LexiographicMatching {
         if m.attrs.iter().any(|a| a.path.is_ident("sorted")) {
             m.attrs.retain(|a| !a.path.is_ident("sorted"));
             let mut names = Vec::new();
+            let mut wild = None;
             for arm in m.arms.iter() {
+                if let Some(ref w) = wild {
+                    self.errors.push(syn::Error::new_spanned(
+                        &w,
+                        "wildcard pattern should come last",
+                    ));
+                    break;
+                }
+
                 let path = if let Some(path) = get_arm_path(&arm.pat) {
                     path
+                } else if let syn::Pat::Wild(w) = &arm.pat {
+                    wild = Some(w);
+                    continue;
                 } else {
                     self.errors.push(syn::Error::new_spanned(
                         &arm.pat,
@@ -81,7 +91,7 @@ impl syn::visit_mut::VisitMut for LexiographicMatching {
                     ));
                     continue;
                 };
-                let name = path_as_string(path);
+                let name = path_as_string(&path);
                 if names.last().map(|last| &name < last).unwrap_or(false) {
                     let next_lex_i = names.binary_search(&name).unwrap_err();
                     self.errors.push(syn::Error::new_spanned(
