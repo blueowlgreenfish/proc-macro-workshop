@@ -53,7 +53,6 @@ fn path_as_string(path: &syn::Path) -> String {
     // format!("{}", quote! { #path })
 }
 
-// fn get_arm_path(arm: &syn::Pat) -> Option<&syn::Path> {
 fn get_arm_path(arm: &syn::Pat) -> Option<syn::Path> {
     match *arm {
         syn::Pat::Ident(syn::PatIdent { ident: ref id, .. }) => Some(id.clone().into()),
