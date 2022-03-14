@@ -3,10 +3,26 @@ use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
+fn ty_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
+    if let syn::Type::Path(p) = ty {
+        if p.path.segments[0].ident != "Option" {
+            return None;
+        }
+
+        if let syn::PathArguments::AngleBracketed(inner_ty) = &p.path.segments[0].arguments {
+            let inner_ty = inner_ty.args.pairs().next().unwrap();
+            if let syn::GenericArgument::Type(t) = inner_ty.value() {
+                return Some(t);
+            }
+        }
+    }
+    None
+}
+
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    println!("{:#?}", input);
+    // println!("{:#?}", input);
     let name = input.ident;
     let bname = format!("{}Builder", name);
     let bident = Ident::new(&bname, Span::call_site());
@@ -19,47 +35,70 @@ pub fn derive(input: TokenStream) -> TokenStream {
     } else {
         unimplemented!();
     };
-    let expanded = quote! {
-        pub struct #bident {
-            executable: Option<String>,
-            args: Option<Vec<String>>,
-            env: Option<Vec<String>>,
-            current_dir: Option<String>,
+    let optionized = fields.iter().map(|f| {
+        let name = &f.ident.as_ref().unwrap();
+        let ty = &f.ty;
+        if ty_inner_type(ty).is_some() {
+            quote! { #name: #ty }
+        } else {
+            quote! { #name: Option<#ty> }
         }
-        impl #name {
-            fn builder() -> #bident {
-                #bident {
-                    executable: None,
-                    args: None,
-                    env: None,
-                    current_dir: None,
+    });
+    let methods = fields.iter().map(|f| {
+        let name = &f.ident.as_ref().unwrap();
+        let ty = &f.ty;
+        if let Some(inner_ty) = ty_inner_type(ty) {
+            quote! {
+                fn #name(&mut self, #name: #inner_ty) -> &mut Self {
+                    self.#name = Some(#name);
+                    self
+                }
+            }
+        } else {
+            quote! {
+                fn #name(&mut self, #name: #ty) -> &mut Self {
+                    self.#name = Some(#name);
+                    self
                 }
             }
         }
-        impl #bident {
-            fn executable(&mut self, executable: String) -> &mut Self {
-                self.executable = Some(executable);
-                self
+    });
+    let build_fields = fields.iter().map(|f| {
+        let name = &f.ident.as_ref().unwrap();
+        let ty = &f.ty;
+        if ty_inner_type(ty).is_some() {
+            quote! {
+                #name: self.#name.clone()
             }
-            fn args(&mut self, args: Vec<String>) -> &mut Self {
-                self.args = Some(args);
-                self
+        } else {
+            quote! {
+                #name: self.#name.clone().ok_or(concat!(stringify!(#name), " is not set"))?
             }
-            fn env(&mut self, env: Vec<String>) -> &mut Self {
-                self.env = Some(env);
-                self
+        }
+    });
+    let build_empty = fields.iter().map(|f| {
+        let name = &f.ident.as_ref().unwrap();
+        quote! {
+            #name: None
+        }
+    });
+    let expanded = quote! {
+    pub struct #bident {
+        #(#optionized,)*
+    }
+    impl #name {
+        fn builder() -> #bident {
+            #bident {
+                #(#build_empty,)*
             }
-            fn current_dir(&mut self, current_dir: String) -> &mut Self {
-                self.current_dir = Some(current_dir);
-                self
-            }
+        }
+    }
+    impl #bident {
+            #(#methods)*
 
-            pub fn build(&mut self) -> Result<#name, Box<dyn std::error::Error>> {
+            fn build(&self) -> Result<#name, Box<dyn std::error::Error>> {
                 Ok(#name {
-                    executable: self.executable.clone().ok_or("executable not set")?,
-                    args: self.args.clone().ok_or("args not set")?,
-                    env: self.env.clone().ok_or("env not set")?,
-                    current_dir: self.current_dir.clone(),
+                    #(#build_fields,)*
                 })
             }
         }
