@@ -36,7 +36,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         unimplemented!();
     };
     let optionized = fields.iter().map(|f| {
-        let name = &f.ident.as_ref().unwrap();
+        let name = f.ident.as_ref().unwrap();
         let ty = &f.ty;
         if ty_inner_type(ty).is_some() {
             quote! { #name: #ty }
@@ -45,7 +45,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     });
     let methods = fields.iter().map(|f| {
-        let name = &f.ident.as_ref().unwrap();
+        let name = f.ident.as_ref().unwrap();
         let ty = &f.ty;
         if let Some(inner_ty) = ty_inner_type(ty) {
             quote! {
@@ -64,7 +64,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     });
     let build_fields = fields.iter().map(|f| {
-        let name = &f.ident.as_ref().unwrap();
+        let name = f.ident.as_ref().unwrap();
         let ty = &f.ty;
         if ty_inner_type(ty).is_some() {
             quote! {
@@ -77,7 +77,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     });
     let build_empty = fields.iter().map(|f| {
-        let name = &f.ident.as_ref().unwrap();
+        let name = f.ident.as_ref().unwrap();
         quote! {
             #name: None
         }
