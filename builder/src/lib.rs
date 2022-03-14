@@ -6,10 +6,19 @@ use syn::{parse_macro_input, DeriveInput};
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    // println!("{:#?}", input);
+    println!("{:#?}", input);
     let name = input.ident;
     let bname = format!("{}Builder", name);
     let bident = Ident::new(&bname, Span::call_site());
+    let fields = if let syn::Data::Struct(syn::DataStruct {
+        fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
+        ..
+    }) = input.data
+    {
+        named
+    } else {
+        unimplemented!();
+    };
     let expanded = quote! {
         pub struct #bident {
             executable: Option<String>,
@@ -50,7 +59,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     executable: self.executable.clone().ok_or("executable not set")?,
                     args: self.args.clone().ok_or("args not set")?,
                     env: self.env.clone().ok_or("env not set")?,
-                    current_dir: self.current_dir.clone().ok_or("current_dir not set")?,
+                    current_dir: self.current_dir.clone(),
                 })
             }
         }
