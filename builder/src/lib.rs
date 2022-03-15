@@ -83,17 +83,17 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     });
     let expanded = quote! {
-    pub struct #bident {
-        #(#optionized,)*
-    }
-    impl #name {
-        fn builder() -> #bident {
-            #bident {
-                #(#build_empty,)*
+        pub struct #bident {
+            #(#optionized,)*
+        }
+        impl #name {
+            fn builder() -> #bident {
+                #bident {
+                    #(#build_empty,)*
+                }
             }
         }
-    }
-    impl #bident {
+        impl #bident {
             #(#methods)*
 
             fn build(&self) -> Result<#name, Box<dyn std::error::Error>> {
