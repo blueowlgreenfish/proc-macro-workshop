@@ -45,14 +45,10 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     let name = f.ident.as_ref().unwrap();
     let ms = builder_of(f)?;
     let inner_ty = ms.nested.pairs().next().unwrap();
-    let meta_value = if let syn::NestedMeta::Meta(meta) = inner_ty.value() {
-        if let syn::Meta::NameValue(mnv) = meta {
-            mnv
-        } else {
-            panic!();
-        }
+    let meta_value = if let syn::NestedMeta::Meta(syn::Meta::NameValue(mnv)) = inner_ty.value() {
+        mnv
     } else {
-        panic!();
+        unimplemented!();
     };
 
     // let mut tokens = g.stream().into_iter();
