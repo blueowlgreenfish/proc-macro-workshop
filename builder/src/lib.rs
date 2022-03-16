@@ -31,14 +31,6 @@ fn builder_of(f: &syn::Field) -> Option<syn::MetaList> {
         }
     }
     None
-    // for attr in &f.attrs {
-    //     if attr.path.segments.len() == 1 && attr.path.segments[0].ident == "builder" {
-    //         if let TokenTree::Group(g) = attr.tokens.clone().into_iter().next().unwrap() {
-    //             return Some(g);
-    //         }
-    //     }
-    // }
-    // None
 }
 
 fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
@@ -51,18 +43,6 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
         unimplemented!();
     };
 
-    // let mut tokens = g.stream().into_iter();
-    // if let TokenTree::Ident(i) = tokens.next().unwrap() {
-    //     assert_eq!(i, "each");
-    // }
-    // if let TokenTree::Punct(p) = tokens.next().unwrap() {
-    //     assert_eq!(p.as_char(), '=');
-    // }
-    // let arg = if let TokenTree::Literal(l) = tokens.next().unwrap() {
-    //     l
-    // } else {
-    //     unimplemented!();
-    // };
     match &meta_value.lit {
         syn::Lit::Str(s) => {
             let arg = proc_macro2::Ident::new(&s.value(), Span::call_site());
