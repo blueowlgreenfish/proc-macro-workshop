@@ -44,7 +44,6 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     };
 
     if meta_value.path.get_ident().unwrap() != "each" {
-        // return Some((false, syn::Error::to_compile_error("error: expected `builder(each = "...")`")));
         return Some((
             false,
             syn::Error::new_spanned(ms, "expected `builder(each = \"...\")`").to_compile_error(),
