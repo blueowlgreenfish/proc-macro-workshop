@@ -1,10 +1,22 @@
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(CustomDebug)]
 pub fn derive(input: TokenStream) -> TokenStream {
-    let _input = parse_macro_input!(input as DeriveInput);
+    let input = parse_macro_input!(input as DeriveInput);
     // println!("{:#?}", input);
+    let ident = input.ident;
+    let expand = quote! {
+        impl std::fmt::Debug for #ident {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_struct("Field")
+                    .field("name", &self.name)
+                    .field("bitmask", &self.bitmask)
+                    .finish()
+            }
+        }
+    };
 
-    TokenStream::new()
+    expand.into()
 }
