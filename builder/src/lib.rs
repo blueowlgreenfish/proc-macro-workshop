@@ -3,7 +3,7 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
-fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> Option<&'a syn::Type> {
+fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> std::option::Option<&'a syn::Type> {
     if let syn::Type::Path(p) = ty {
         if p.path.segments[0].ident != wrapper {
             return None;
@@ -19,7 +19,7 @@ fn ty_inner_type<'a>(wrapper: &str, ty: &'a syn::Type) -> Option<&'a syn::Type> 
     None
 }
 
-fn builder_of(f: &syn::Field) -> Option<syn::MetaList> {
+fn builder_of(f: &syn::Field) -> std::option::Option<syn::MetaList> {
     for attr in &f.attrs {
         if let Ok(syn::Meta::List(ms)) = attr.parse_meta() {
             // println!("{:#?}", ms);
@@ -33,7 +33,7 @@ fn builder_of(f: &syn::Field) -> Option<syn::MetaList> {
     None
 }
 
-fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
+fn extend_method(f: &syn::Field) -> std::option::Option<(bool, proc_macro2::TokenStream)> {
     let name = f.ident.as_ref().unwrap();
     let ms = builder_of(f)?;
     let inner_ty = ms.nested.pairs().next().unwrap();
@@ -44,7 +44,6 @@ fn extend_method(f: &syn::Field) -> Option<(bool, proc_macro2::TokenStream)> {
     };
 
     if meta_value.path.get_ident().unwrap() != "each" {
-        // return Some((false, syn::Error::to_compile_error("error: expected `builder(each = "...")`")));
         return Some((
             false,
             syn::Error::new_spanned(ms, "expected `builder(each = \"...\")`").to_compile_error(),
@@ -89,7 +88,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         if ty_inner_type("Option", ty).is_some() || builder_of(f).is_some() {
             quote! { #name: #ty }
         } else {
-            quote! { #name: Option<#ty> }
+            quote! { #name: std::option::Option<#ty> }
         }
     });
     let methods = fields.iter().map(|f| {
@@ -167,7 +166,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         impl #bident {
             #(#methods)*
 
-            fn build(&self) -> Result<#name, Box<dyn std::error::Error>> {
+            fn build(&self) -> std::result::Result<#name, std::boxed::Box<dyn std::error::Error>> {
                 Ok(#name {
                     #(#build_fields,)*
                 })
