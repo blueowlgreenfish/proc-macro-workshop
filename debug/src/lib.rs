@@ -17,13 +17,12 @@ pub fn derive(input: TokenStream) -> TokenStream {
     } else {
         unimplemented!();
     };
-    let mut field_idents = Vec::new();
-    for value in data.into_iter() {
-        field_idents.push(value.ident.unwrap());
-    }
-    let smaller_expand = field_idents.iter().map(|f| {
-        let field_idents_string = f.to_string();
-        quote! { .field(#field_idents_string, &self.#f) }
+    let smaller_expand = data.into_iter().map(|f| {
+        let field_ident = f.ident.as_ref().unwrap();
+        let field_ident_string = f.ident.as_ref().unwrap().to_string();
+        quote! {
+            .field(#field_ident_string, &self.#field_ident)
+        }
     });
     let expand = quote! {
         impl std::fmt::Debug for #ident {
