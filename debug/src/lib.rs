@@ -19,7 +19,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     };
     let smaller_expand = data.into_iter().map(|f| {
         let field_ident = f.ident.as_ref().unwrap();
-        let field_ident_string = f.ident.as_ref().unwrap().to_string();
+        let field_ident_string = field_ident.to_string();
         quote! {
             .field(#field_ident_string, &self.#field_ident)
         }
