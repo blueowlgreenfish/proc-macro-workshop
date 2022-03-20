@@ -8,6 +8,14 @@ pub fn derive(input: TokenStream) -> TokenStream {
     // println!("{:#?}", input);
     let ident = input.ident;
     let ident_string = ident.to_string();
+    let generics = input.generics;
+    let (impl_generics, ty_generics, _where_clause) = generics.split_for_impl();
+    let generics_ident: Option<&syn::Ident> =
+        if let Some(syn::GenericParam::Type(g)) = generics.params.first() {
+            Some(&g.ident)
+        } else {
+            None
+        };
     let data = if let syn::Data::Struct(syn::DataStruct {
         fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
         ..
@@ -46,17 +54,42 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         }
     });
-    let expand = quote! {
-        impl std::fmt::Debug for #ident {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.debug_struct(#ident_string)
-                    #(
-                        #smaller_expand
-                    )*
-                    .finish()
+    let expand = if generics_ident.is_some() {
+        quote! {
+            impl #impl_generics std::fmt::Debug for #ident #ty_generics where #generics_ident: std::fmt::Debug {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    f.debug_struct(#ident_string)
+                        #(
+                            #smaller_expand
+                        )*
+                        .finish()
+                }
+            }
+        }
+    } else {
+        quote! {
+            impl std::fmt::Debug for #ident {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    f.debug_struct(#ident_string)
+                        #(
+                            #smaller_expand
+                        )*
+                        .finish()
+                }
             }
         }
     };
+    // let expand = quote! {
+    //     impl #impl_generics std::fmt::Debug for #ident #ty_generics where #generics_ident: std::fmt::Debug {
+    //         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    //             f.debug_struct(#ident_string)
+    //                 #(
+    //                     #smaller_expand
+    //                 )*
+    //                 .finish()
+    //         }
+    //     }
+    // };
 
     expand.into()
 }
