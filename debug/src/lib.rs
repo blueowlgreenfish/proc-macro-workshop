@@ -79,17 +79,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         }
     };
-    // let expand = quote! {
-    //     impl #impl_generics std::fmt::Debug for #ident #ty_generics where #generics_ident: std::fmt::Debug {
-    //         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    //             f.debug_struct(#ident_string)
-    //                 #(
-    //                     #smaller_expand
-    //                 )*
-    //                 .finish()
-    //         }
-    //     }
-    // };
 
     expand.into()
 }
