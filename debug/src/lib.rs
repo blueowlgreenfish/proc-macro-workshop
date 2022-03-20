@@ -54,9 +54,9 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         }
     });
-    let expand = if generics_ident.is_some() {
+    let expand = if let Some(gi) = generics_ident {
         quote! {
-            impl #impl_generics std::fmt::Debug for #ident #ty_generics where #generics_ident: std::fmt::Debug {
+            impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     f.debug_struct(#ident_string)
                         #(
