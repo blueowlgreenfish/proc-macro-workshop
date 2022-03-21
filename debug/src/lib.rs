@@ -55,7 +55,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         }
     });
-    let type_ident = data.into_iter().map(|f| {
+    let mut type_ident = data.into_iter().map(|f| {
         let type_path = if let syn::Type::Path(syn::TypePath { path, .. }) = f.ty {
             path
         } else {
@@ -67,40 +67,42 @@ pub fn derive(input: TokenStream) -> TokenStream {
     //     where
     //         PhantomData<T>: Debug,
     //     {...}
-    let expand = if let Some(gi) = generics_ident {
-        let hello = type_ident.into_iter().next().unwrap();
-        if hello.is_some() {
-            if hello.clone().unwrap() == "PhantomData" {
-                let phantom = Ident::new(&hello.unwrap(), Span::call_site());
-                quote! {
+    // let smaller_expand1 = smaller_expand.clone();
+    let mut wowza = proc_macro2::TokenStream::new();
+    if let Some(gi) = generics_ident {
+        // let mut hello = type_ident;
+        while let Some(Some(hi)) = type_ident.next() {
+            if hi.clone() == "PhantomData" {
+                let phantom = Ident::new(&hi, Span::call_site());
+                let smaller_expand2 = smaller_expand.clone();
+                wowza = quote! {
                     impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug, #phantom<#gi>: std::fmt::Debug {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                             f.debug_struct(#ident_string)
                                 #(
-                                    #smaller_expand
+                                    #smaller_expand2
                                 )*
                                 .finish()
                         }
                     }
-                }
+                };
             } else {
-                quote! {
+                let smaller_expand3 = smaller_expand.clone();
+                wowza = quote! {
                     impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                             f.debug_struct(#ident_string)
                                 #(
-                                    #smaller_expand
+                                    #smaller_expand3
                                 )*
                                 .finish()
                         }
                     }
-                }
+                };
             }
-        } else {
-            quote! {}
         }
     } else {
-        quote! {
+        wowza = quote! {
             impl std::fmt::Debug for #ident {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     f.debug_struct(#ident_string)
@@ -110,8 +112,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
                         .finish()
                 }
             }
-        }
+        };
     };
 
-    expand.into()
+    wowza.into()
 }
