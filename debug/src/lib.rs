@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
@@ -25,7 +26,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     } else {
         unimplemented!();
     };
-    let smaller_expand = data.into_iter().map(|f| {
+    let smaller_expand = data.clone().into_iter().map(|f| {
         let mut lit = String::new();
         if !f.attrs.is_empty() {
             for attr in f.attrs {
@@ -54,17 +55,49 @@ pub fn derive(input: TokenStream) -> TokenStream {
             }
         }
     });
+    let type_ident = data.into_iter().map(|f| {
+        let type_path = if let syn::Type::Path(syn::TypePath { path, .. }) = f.ty {
+            path
+        } else {
+            unimplemented!();
+        };
+        type_path.get_ident().map(|hi| hi.to_string())
+    });
+    //     impl<T> Debug for Field<T>
+    //     where
+    //         PhantomData<T>: Debug,
+    //     {...}
     let expand = if let Some(gi) = generics_ident {
-        quote! {
-            impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    f.debug_struct(#ident_string)
-                        #(
-                            #smaller_expand
-                        )*
-                        .finish()
+        let hello = type_ident.into_iter().next().unwrap();
+        if hello.is_some() {
+            if hello.clone().unwrap() == "PhantomData" {
+                let phantom = Ident::new(&hello.unwrap(), Span::call_site());
+                quote! {
+                    impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug, #phantom<#gi>: std::fmt::Debug {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            f.debug_struct(#ident_string)
+                                #(
+                                    #smaller_expand
+                                )*
+                                .finish()
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            f.debug_struct(#ident_string)
+                                #(
+                                    #smaller_expand
+                                )*
+                                .finish()
+                        }
+                    }
                 }
             }
+        } else {
+            quote! {}
         }
     } else {
         quote! {
