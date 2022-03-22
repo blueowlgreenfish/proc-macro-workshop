@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, DeriveInput, Ident, Type};
+use syn::{parse_macro_input, spanned::Spanned, DeriveInput};
 
 #[proc_macro_derive(CustomDebug, attributes(debug))]
 pub fn derive(input: TokenStream) -> TokenStream {
@@ -54,7 +54,7 @@ fn custom_debug(mut input: DeriveInput) -> syn::Result<proc_macro2::TokenStream>
 
 fn attr_debug(
     attrs: &[syn::Attribute],
-    ident: &Ident,
+    ident: &syn::Ident,
 ) -> syn::Result<Option<proc_macro2::TokenStream>> {
     use syn::{Lit, LitStr, Meta, MetaNameValue};
     fn debug(attr: &syn::Attribute) -> Option<syn::Result<LitStr>> {
@@ -78,12 +78,14 @@ fn attr_debug(
     }
 }
 
-fn generics_add_debug<'g>(ty: &mut syn::TypeParam, mut field_ty: impl Iterator<Item = &'g Type>) {
-    use syn::{parse_quote, TypeParam};
-    let TypeParam { ident, bounds, .. } = ty;
-    let phantom_data: Type = parse_quote!(PhantomData<#ident>);
+fn generics_add_debug<'g>(
+    ty: &mut syn::TypeParam,
+    mut field_ty: impl Iterator<Item = &'g syn::Type>,
+) {
+    let syn::TypeParam { ident, bounds, .. } = ty;
+    let phantom_data: syn::Type = syn::parse_quote!(PhantomData<#ident>);
     // do not add Debug trait constrain when the generics T is PhantomData<T>
     if !field_ty.any(|t| t == &phantom_data) {
-        bounds.push(parse_quote!(::std::fmt::Debug));
+        bounds.push(syn::parse_quote!(::std::fmt::Debug));
     }
 }
