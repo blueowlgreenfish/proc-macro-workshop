@@ -28,7 +28,7 @@ fn custom_debug(mut input: DeriveInput) -> syn::Result<proc_macro2::TokenStream>
         let field_rhs = field_idents
             .zip(named.iter().map(|f| f.attrs.as_slice()))
             .map(|(i, a)| attr_debug(a, i).map(|t| t.unwrap_or(quote! {&self.#i})))
-            .collect::<syn::Result<Vec<_>>>()?;
+            .collect::<syn::Result<Vec<proc_macro2::TokenStream>>>()?;
 
         generics
             .type_params_mut()
