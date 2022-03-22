@@ -1,119 +1,87 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, spanned::Spanned, DeriveInput, Ident, Type};
 
 #[proc_macro_derive(CustomDebug, attributes(debug))]
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    // println!("{:#?}", input);
-    let ident = input.ident;
-    let ident_string = ident.to_string();
-    let generics = input.generics;
-    let (impl_generics, ty_generics, _where_clause) = generics.split_for_impl();
-    let generics_ident: Option<&syn::Ident> =
-        if let Some(syn::GenericParam::Type(g)) = generics.params.first() {
-            Some(&g.ident)
-        } else {
-            None
-        };
-    let data = if let syn::Data::Struct(syn::DataStruct {
-        fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
+
+    TokenStream::from(match custom_debug(input) {
+        Ok(token) => token,
+        Err(err) => err.to_compile_error(),
+    })
+}
+
+fn custom_debug(mut input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    use syn::{Data, DataStruct, Fields, FieldsNamed};
+    if let Data::Struct(DataStruct {
+        fields: Fields::Named(FieldsNamed { named, .. }),
         ..
-    }) = input.data
+    }) = &input.data
     {
-        named
-    } else {
-        unimplemented!();
-    };
-    let smaller_expand = data.clone().into_iter().map(|f| {
-        let mut lit = String::new();
-        if !f.attrs.is_empty() {
-            for attr in f.attrs {
-                if let Ok(syn::Meta::NameValue(hi)) = attr.parse_meta() {
-                    match hi.lit {
-                        syn::Lit::Str(yes) => {
-                            lit = yes.value();
-                        },
-                        _ => {
-                            unimplemented!();
-                        },
-                    }
-                }
-            }
-        };
-        let field_ident = f.ident.as_ref().unwrap();
-        let field_ident_string = field_ident.to_string();
-        if !lit.is_empty() {
-            quote! {
-                // & needed in front of format_args! to retain binary form
-                .field(#field_ident_string, &format_args!(#lit, &self.#field_ident))
-            }
-        } else {
-            quote! {
-                .field(#field_ident_string, &self.#field_ident)
-            }
-        }
-    });
-    let mut type_ident = data.into_iter().map(|f| {
-        let type_path = if let syn::Type::Path(syn::TypePath { path, .. }) = f.ty {
-            path
-        } else {
-            unimplemented!();
-        };
-        type_path.get_ident().map(|hi| hi.to_string())
-    });
-    //     impl<T> Debug for Field<T>
-    //     where
-    //         PhantomData<T>: Debug,
-    //     {...}
-    // let smaller_expand1 = smaller_expand.clone();
-    let mut wowza = proc_macro2::TokenStream::new();
-    if let Some(gi) = generics_ident {
-        // let mut hello = type_ident;
-        while let Some(Some(hi)) = type_ident.next() {
-            if hi.clone() == "PhantomData" {
-                let phantom = Ident::new(&hi, Span::call_site());
-                let smaller_expand2 = smaller_expand.clone();
-                wowza = quote! {
-                    impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug, #phantom<#gi>: std::fmt::Debug {
-                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                            f.debug_struct(#ident_string)
-                                #(
-                                    #smaller_expand2
-                                )*
-                                .finish()
-                        }
-                    }
-                };
-            } else {
-                let smaller_expand3 = smaller_expand.clone();
-                wowza = quote! {
-                    impl #impl_generics std::fmt::Debug for #ident #ty_generics where #gi: std::fmt::Debug {
-                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                            f.debug_struct(#ident_string)
-                                #(
-                                    #smaller_expand3
-                                )*
-                                .finish()
-                        }
-                    }
-                };
-            }
-        }
-    } else {
-        wowza = quote! {
-            impl std::fmt::Debug for #ident {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    f.debug_struct(#ident_string)
+        let (ident, generics) = (&input.ident, &mut input.generics);
+        let ident_str = ident.to_string();
+        let field_idents = named.iter().map(|f| f.ident.as_ref().unwrap());
+        let field_idents_str = field_idents.clone().map(|i| i.to_string());
+
+        let field_rhs = field_idents
+            .zip(named.iter().map(|f| f.attrs.as_slice()))
+            .map(|(i, a)| attr_debug(a, i).map(|t| t.unwrap_or(quote! {&self.#i})))
+            .collect::<syn::Result<Vec<_>>>()?;
+
+        generics
+            .type_params_mut()
+            .map(|g| generics_add_debug(g, named.iter().map(|f| &f.ty)))
+            .last();
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        Ok(quote! {
+            impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
+                    f.debug_struct(&#ident_str)
                         #(
-                            #smaller_expand
+                            .field(&#field_idents_str, #field_rhs)
                         )*
                         .finish()
                 }
             }
-        };
-    };
+        })
+    } else {
+        Err(syn::Error::new(input.span(), "Named Struct Only :)"))
+    }
+}
 
-    wowza.into()
+fn attr_debug(
+    attrs: &[syn::Attribute],
+    ident: &Ident,
+) -> syn::Result<Option<proc_macro2::TokenStream>> {
+    use syn::{Lit, LitStr, Meta, MetaNameValue};
+    fn debug(attr: &syn::Attribute) -> Option<syn::Result<LitStr>> {
+        match attr.parse_meta() {
+            Ok(Meta::NameValue(MetaNameValue {
+                path,
+                lit: Lit::Str(s),
+                ..
+            })) if path.is_ident("debug") => Some(Ok(s)),
+            _ => Some(Err(syn::Error::new(
+                attr.span(),
+                "failed to parse attr meta",
+            ))),
+        }
+    }
+    match attrs.iter().find_map(debug) {
+        None => Ok(None),
+        Some(Ok(fmt)) => Ok(Some(quote! {&::std::format_args!(#fmt, self.#ident)})),
+        Some(Err(err)) => Err(err),
+    }
+}
+
+fn generics_add_debug<'g>(ty: &mut syn::TypeParam, mut field_ty: impl Iterator<Item = &'g Type>) {
+    use syn::{parse_quote, TypeParam};
+    let TypeParam { ident, bounds, .. } = ty;
+    let phantom_data: Type = parse_quote!(PhantomData<#ident>);
+    // do not add Debug trait constrain when the generics T is PhantomData<T>
+    if !field_ty.any(|t| t == &phantom_data) {
+        bounds.push(parse_quote!(::std::fmt::Debug));
+    }
 }
