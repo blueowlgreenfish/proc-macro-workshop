@@ -5,6 +5,7 @@ use syn::{parse_macro_input, spanned::Spanned, DeriveInput, Ident, Type};
 #[proc_macro_derive(CustomDebug, attributes(debug))]
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    // println!("{:#?}", input);
 
     TokenStream::from(match custom_debug(input) {
         Ok(token) => token,
@@ -70,6 +71,7 @@ fn attr_debug(
         }
     }
     match attrs.iter().find_map(debug) {
+        // If attrs is an empty slice, it returns None.
         None => Ok(None),
         Some(Ok(fmt)) => Ok(Some(quote! {&::std::format_args!(#fmt, self.#ident)})),
         Some(Err(err)) => Err(err),
