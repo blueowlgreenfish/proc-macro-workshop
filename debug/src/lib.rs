@@ -33,7 +33,9 @@ fn custom_debug(mut input: DeriveInput) -> syn::Result<proc_macro2::TokenStream>
         generics
             .type_params_mut()
             .map(|g| generics_add_debug(g, named.iter().map(|f| &f.ty)))
-            .last();
+            // This for_each method is only here to suppress "unused `std::iter::Map` that must be used" warning.
+            .for_each(|_f| {});
+
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         Ok(quote! {
