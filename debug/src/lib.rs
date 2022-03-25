@@ -14,9 +14,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 }
 
 fn custom_debug(mut input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
-    use syn::{Data, DataStruct, Fields, FieldsNamed};
-    if let Data::Struct(DataStruct {
-        fields: Fields::Named(FieldsNamed { named, .. }),
+    if let syn::Data::Struct(syn::DataStruct {
+        fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
         ..
     }) = &input.data
     {
@@ -57,12 +56,11 @@ fn attr_debug(
     attrs: &[syn::Attribute],
     ident: &syn::Ident,
 ) -> syn::Result<Option<proc_macro2::TokenStream>> {
-    use syn::{Lit, LitStr, Meta, MetaNameValue};
-    fn debug(attr: &syn::Attribute) -> Option<syn::Result<LitStr>> {
+    fn debug(attr: &syn::Attribute) -> Option<syn::Result<syn::LitStr>> {
         match attr.parse_meta() {
-            Ok(Meta::NameValue(MetaNameValue {
+            Ok(syn::Meta::NameValue(syn::MetaNameValue {
                 path,
-                lit: Lit::Str(s),
+                lit: syn::Lit::Str(s),
                 ..
             })) if path.is_ident("debug") => Some(Ok(s)),
             _ => Some(Err(syn::Error::new(
