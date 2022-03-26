@@ -37,9 +37,9 @@ fn attr_debug(
     }
 }
 
-fn generics_add_debug<'g>(
+fn generics_add_debug<'a>(
     ty: &mut syn::TypeParam,
-    mut field_ty: impl Iterator<Item = &'g syn::Type>,
+    mut field_ty: impl Iterator<Item = &'a syn::Type>,
 ) {
     let syn::TypeParam { ident, bounds, .. } = ty;
     let phantom_data: syn::Type = syn::parse_quote!(PhantomData<#ident>);
