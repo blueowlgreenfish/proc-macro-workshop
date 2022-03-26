@@ -83,7 +83,7 @@ fn generics_add_debug<'g>(
 ) {
     let syn::TypeParam { ident, bounds, .. } = ty;
     let phantom_data: syn::Type = syn::parse_quote!(PhantomData<#ident>);
-    // do not add Debug trait constrain when the generics T is PhantomData<T>
+    // do not add Debug trait constraint when the generics T is PhantomData<T>
     if !field_ty.any(|t| t == &phantom_data) {
         bounds.push(syn::parse_quote!(::std::fmt::Debug));
     }
