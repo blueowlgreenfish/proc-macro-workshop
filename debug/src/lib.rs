@@ -68,7 +68,7 @@ fn custom_debug(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         generics
             .type_params_mut()
             // Use for_each here instead of map.
-            .for_each(|g| generics_add_debug(g, named.iter().map(|f| &f.ty)));
+            .for_each(|tp| generics_add_debug(tp, named.iter().map(|f| &f.ty)));
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
