@@ -31,6 +31,7 @@ fn attr_debug(
         }
     }
     match attrs.iter().find_map(debug) {
+        // If attrs is an empty slice, it returns None.
         None => Ok(None),
         Some(Ok(fmt)) => Ok(Some(quote! { &::std::format_args!(#fmt, self.#ident) })),
         Some(Err(err)) => Err(err),
@@ -43,6 +44,7 @@ fn generics_add_debug<'a>(
 ) {
     let syn::TypeParam { ident, bounds, .. } = ty;
     let phantom_data: syn::Type = syn::parse_quote!(PhantomData<#ident>);
+    // Do not add Debug trait constraint when the gnerics T is PhantomData<T>.
     if !field_ty.any(|t| t == &phantom_data) {
         bounds.push(syn::parse_quote!(::std::fmt::Debug));
     }
@@ -65,6 +67,7 @@ fn custom_debug(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
 
         generics
             .type_params_mut()
+            // Use for_each here instead of map.
             .for_each(|g| generics_add_debug(g, named.iter().map(|f| &f.ty)));
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
