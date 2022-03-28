@@ -16,7 +16,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 fn attr_debug(
     attrs: &[syn::Attribute],
     ident: &syn::Ident,
-) -> syn::Result<Option<proc_macro2::TokenStream>> {
+) -> syn::Result<proc_macro2::TokenStream> {
     fn debug(attr: &syn::Attribute) -> Option<syn::Result<syn::LitStr>> {
         match attr.parse_meta() {
             Ok(syn::Meta::NameValue(syn::MetaNameValue {
@@ -32,8 +32,8 @@ fn attr_debug(
     }
     match attrs.iter().find_map(debug) {
         // If attrs is an empty slice, it returns None.
-        None => Ok(None),
-        Some(Ok(fmt)) => Ok(Some(quote! { &::std::format_args!(#fmt, self.#ident) })),
+        None => Ok(quote! { &self.#ident }),
+        Some(Ok(fmt)) => Ok(quote! { &::std::format_args!(#fmt, self.#ident) }),
         Some(Err(err)) => Err(err),
     }
 }
@@ -62,7 +62,7 @@ fn custom_debug(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
         let field_idents_str = field_idents.clone().map(|i| i.to_string());
         let field_rhs = field_idents
             .zip(named.iter().map(|f| f.attrs.as_slice()))
-            .map(|(i, a)| attr_debug(a, i).map(|t| t.unwrap_or(quote! { &self.#i })))
+            .map(|(i, a)| attr_debug(a, i))
             .collect::<syn::Result<Vec<proc_macro2::TokenStream>>>()?;
 
         generics
