@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, spanned::Spanned, DeriveInput};
@@ -38,14 +40,90 @@ fn attr_debug(
     }
 }
 
+fn generics_search<'a>(
+    ty: &'a syn::Type,
+    ident: &syn::Ident,
+    associated: &mut HashSet<&'a syn::Type>,
+) -> bool {
+    fn check_associated<'a>(
+        ty: &'a syn::Type,
+        ident: &syn::Ident,
+        associated: &mut HashSet<&'a syn::Type>,
+    ) -> bool {
+        if let syn::Type::Path(syn::TypePath {
+            path:
+                syn::Path {
+                    segments,
+                    leading_colon: None,
+                },
+            ..
+        }) = ty
+        {
+            if segments.len() > 1
+                && segments
+                    .first()
+                    .map(|seg| &seg.ident == ident)
+                    .unwrap_or(false)
+            {
+                associated.insert(ty);
+                return true;
+            }
+        }
+        false
+    }
+    fn check_angle_bracket_associated<'a>(
+        ty: &'a syn::Type,
+        ident: &syn::Ident,
+        associated: &mut HashSet<&'a syn::Type>,
+    ) -> bool {
+        fn check<'a>(
+            arg: &'a syn::PathArguments,
+            ident: &syn::Ident,
+            associated: &mut HashSet<&'a syn::Type>,
+        ) -> bool {
+            if let syn::PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
+                args,
+                ..
+            }) = arg
+            {
+                args.iter().fold(false, |acc, arg| {
+                    if let syn::GenericArgument::Type(t) = arg {
+                        check_associated(t, ident, associated) || acc
+                    } else {
+                        acc
+                    }
+                })
+            } else {
+                false
+            }
+        }
+        if let syn::Type::Path(syn::TypePath {
+            path: syn::Path { segments, .. },
+            ..
+        }) = ty
+        {
+            return segments
+                .last()
+                .map(|seg| check(&seg.arguments, ident, associated))
+                .unwrap_or(false);
+        }
+        false
+    }
+
+    check_associated(ty, ident, associated) || check_angle_bracket_associated(ty, ident, associated)
+}
+
 fn generics_add_debug<'a>(
     ty: &mut syn::TypeParam,
-    mut field_ty: impl Iterator<Item = &'a syn::Type>,
+    field_ty: impl Iterator<Item = &'a syn::Type>,
+    associated: &mut std::collections::HashSet<&'a syn::Type>,
 ) {
     let syn::TypeParam { ident, bounds, .. } = ty;
-    let phantom_data: syn::Type = syn::parse_quote!(PhantomData<#ident>);
-    // Do not add Debug trait constraint when the gnerics T is PhantomData<T>.
-    if !field_ty.any(|t| t == &phantom_data) {
+    let phantom_data: &syn::Type = &syn::parse_quote!(PhantomData<#ident>);
+    // Do not add Debug trait constraint when the gnerics T contains associated types or T is PhantomData<T>.
+    if !field_ty.fold(false, |acc, t| {
+        generics_search(t, ident, associated) || t == phantom_data || acc
+    }) {
         bounds.push(syn::parse_quote!(::std::fmt::Debug));
     }
 }
@@ -65,10 +143,13 @@ fn custom_debug(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             .map(|(i, a)| attr_debug(a, i).map(|t| t.unwrap_or(quote! { &self.#i })))
             .collect::<syn::Result<Vec<proc_macro2::TokenStream>>>()?;
 
+        let mut generics_associated = HashSet::with_capacity(8);
         generics
             .type_params_mut()
             // Use for_each here instead of map.
-            .for_each(|tp| generics_add_debug(tp, named.iter().map(|f| &f.ty)));
+            .for_each(|tp| {
+                generics_add_debug(tp, named.iter().map(|f| &f.ty), &mut generics_associated)
+            });
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
