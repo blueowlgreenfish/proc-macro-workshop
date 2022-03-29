@@ -153,6 +153,24 @@ fn custom_debug(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+        let where_clause = where_clause.cloned();
+        let where_clause = if generics_associated.is_empty() {
+            where_clause
+        } else {
+            let iter = generics_associated.iter();
+            Some(
+                where_clause
+                    .map(|mut wc| {
+                        wc.predicates.extend(iter.clone().map(|ty| {
+                            let wp: syn::WherePredicate = syn::parse_quote!(#ty: ::std::fmt::Debug);
+                            wp
+                        }));
+                        wc
+                    })
+                    .unwrap_or(syn::parse_quote! { where #(#iter: ::std::fmt::Debug),* }),
+            )
+        };
+
         Ok(quote! {
             impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
