@@ -116,7 +116,7 @@ fn generics_search<'a>(
 fn generics_add_debug<'a>(
     ty: &mut syn::TypeParam,
     field_ty: impl Iterator<Item = &'a syn::Type>,
-    associated: &mut std::collections::HashSet<&'a syn::Type>,
+    associated: &mut HashSet<&'a syn::Type>,
 ) {
     let syn::TypeParam { ident, bounds, .. } = ty;
     let phantom_data: syn::Type = syn::parse_quote!(PhantomData<#ident>);
