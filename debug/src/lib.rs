@@ -4,6 +4,9 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, spanned::Spanned, DeriveInput};
 
+mod bound;
+mod generics;
+
 #[proc_macro_derive(CustomDebug, attributes(debug))]
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -18,113 +21,30 @@ pub fn derive(input: TokenStream) -> TokenStream {
 fn attr_debug(
     attrs: &[syn::Attribute],
     ident: &syn::Ident,
+    opt_preds_ident: &mut bound::OptPredsIdent,
 ) -> syn::Result<proc_macro2::TokenStream> {
-    fn debug(attr: &syn::Attribute) -> Option<syn::Result<syn::LitStr>> {
+    fn debug(
+        attr: &syn::Attribute,
+        opt_preds_ident: &mut bound::OptPredsIdent,
+    ) -> Option<syn::Result<syn::LitStr>> {
         match attr.parse_meta() {
             Ok(syn::Meta::NameValue(syn::MetaNameValue {
                 path,
                 lit: syn::Lit::Str(s),
                 ..
             })) if path.is_ident("debug") => Some(Ok(s)),
+            Ok(meta) => bound::field_attr(meta, opt_preds_ident),
             _ => Some(Err(syn::Error::new(
                 attr.span(),
                 "failed to parse attr meta",
             ))),
         }
     }
-    match attrs.iter().find_map(debug) {
+    match attrs.iter().find_map(|attr| debug(attr, opt_preds_ident)) {
         // If attrs is an empty slice, it returns None.
         None => Ok(quote! { &self.#ident }),
         Some(Ok(fmt)) => Ok(quote! { &::std::format_args!(#fmt, self.#ident) }),
         Some(Err(err)) => Err(err),
-    }
-}
-
-fn generics_search<'a>(
-    ty: &'a syn::Type,
-    ident: &syn::Ident,
-    associated: &mut HashSet<&'a syn::Type>,
-) -> bool {
-    fn check_associated<'a>(
-        ty: &'a syn::Type,
-        ident: &syn::Ident,
-        associated: &mut HashSet<&'a syn::Type>,
-    ) -> bool {
-        if let syn::Type::Path(syn::TypePath {
-            path:
-                syn::Path {
-                    segments,
-                    leading_colon: None,
-                },
-            ..
-        }) = ty
-        {
-            if segments.len() > 1
-                && segments
-                    .first()
-                    .map(|seg| &seg.ident == ident)
-                    .unwrap_or(false)
-            {
-                associated.insert(ty);
-                return true;
-            }
-        }
-        false
-    }
-    fn check_angle_bracket_associated<'a>(
-        ty: &'a syn::Type,
-        ident: &syn::Ident,
-        associated: &mut HashSet<&'a syn::Type>,
-    ) -> bool {
-        fn check<'a>(
-            arg: &'a syn::PathArguments,
-            ident: &syn::Ident,
-            associated: &mut HashSet<&'a syn::Type>,
-        ) -> bool {
-            if let syn::PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
-                args,
-                ..
-            }) = arg
-            {
-                args.iter().fold(false, |acc, arg| {
-                    if let syn::GenericArgument::Type(t) = arg {
-                        check_associated(t, ident, associated) || acc
-                    } else {
-                        acc
-                    }
-                })
-            } else {
-                false
-            }
-        }
-        if let syn::Type::Path(syn::TypePath {
-            path: syn::Path { segments, .. },
-            ..
-        }) = ty
-        {
-            return segments
-                .last()
-                .map(|seg| check(&seg.arguments, ident, associated))
-                .unwrap_or(false);
-        }
-        false
-    }
-
-    check_associated(ty, ident, associated) || check_angle_bracket_associated(ty, ident, associated)
-}
-
-fn generics_add_debug<'a>(
-    ty: &mut syn::TypeParam,
-    field_ty: impl Iterator<Item = &'a syn::Type>,
-    associated: &mut HashSet<&'a syn::Type>,
-) {
-    let syn::TypeParam { ident, bounds, .. } = ty;
-    let phantom_data: syn::Type = syn::parse_quote!(PhantomData<#ident>);
-    // Do not add Debug trait constraint when the gnerics T contains associated types or T is PhantomData<T>.
-    if !field_ty.fold(false, |acc, t| {
-        generics_search(t, ident, associated) || t == &phantom_data || acc
-    }) {
-        bounds.push(syn::parse_quote!(::std::fmt::Debug));
     }
 }
 
@@ -135,41 +55,39 @@ fn custom_debug(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     }) = input.data
     {
         let (ident, mut generics) = (input.ident, input.generics);
+        let mut opt = bound::struct_attr(&input.attrs);
         let ident_str = ident.to_string();
         let field_idents = named.iter().map(|f| f.ident.as_ref().unwrap());
         let field_idents_str = field_idents.clone().map(|i| i.to_string());
         let field_rhs = field_idents
             .zip(named.iter().map(|f| f.attrs.as_slice()))
-            .map(|(i, a)| attr_debug(a, i))
+            .map(|(i, a)| attr_debug(a, i, &mut opt))
             .collect::<syn::Result<Vec<proc_macro2::TokenStream>>>()?;
 
         let mut generics_associated = HashSet::with_capacity(8);
+        let (mut bound_where_clause, bound_generics) = opt.unwrap_or_default();
+        let closure = |g: &mut syn::TypeParam| {
+            generics::generics_add_debug(
+                g,
+                named.iter().map(|f| &f.ty),
+                &mut generics_associated,
+                &bound_generics,
+            )
+        };
         generics
             .type_params_mut()
             // Use for_each here instead of map.
-            .for_each(|tp| {
-                generics_add_debug(tp, named.iter().map(|f| &f.ty), &mut generics_associated)
-            });
+            .for_each(closure);
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let where_clause = where_clause.cloned();
-        let where_clause = if generics_associated.is_empty() {
-            where_clause
-        } else {
-            let iter = generics_associated.iter();
-            Some(
-                where_clause
-                    .map(|mut wc| {
-                        wc.predicates.extend(iter.clone().map(|ty| {
-                            let wp: syn::WherePredicate = syn::parse_quote!(#ty: ::std::fmt::Debug);
-                            wp
-                        }));
-                        wc
-                    })
-                    .unwrap_or(syn::parse_quote! { where #(#iter: ::std::fmt::Debug),* }),
-            )
-        };
+        let mut where_clause = where_clause
+            .cloned()
+            .unwrap_or_else(|| syn::parse_quote! { where });
+        let convert =
+            |ty: &syn::Type| -> syn::WherePredicate { syn::parse_quote!(#ty: ::std::fmt::Debug) };
+        bound_where_clause.extend(generics_associated.into_iter().map(convert));
+        where_clause.predicates.extend(bound_where_clause);
 
         Ok(quote! {
             impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
